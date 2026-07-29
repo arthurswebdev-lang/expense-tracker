@@ -396,7 +396,7 @@ html, body {
 .fab {
   position: fixed;
   right: 20px;
-  bottom: calc(20px + var(--safe-bottom));
+  bottom: calc(10px + var(--safe-bottom));
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -415,7 +415,7 @@ html, body {
   right: 88px;
   width: 48px;
   height: 48px;
-  bottom: calc(24px + var(--safe-bottom));
+  bottom: calc(14px + var(--safe-bottom));
   background: var(--card-bg);
   color: var(--text);
   font-size: 22px;
