@@ -153,6 +153,10 @@ function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
 
+function parseAmountInput(value) {
+  return parseFloat(String(value).trim().replace(",", "."));
+}
+
 function fmtAmount(n) {
   return round2(n).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " ֏";
 }
@@ -504,23 +508,24 @@ function renderAccountGrid() {
   const empty = document.getElementById("account-grid-empty");
   grid.hidden = false;
   grid.innerHTML = "";
-  empty.hidden = state.accounts.length !== 0;
+  const gridAccounts = realAccounts();
+  empty.hidden = gridAccounts.length !== 0;
 
-  if (state.accounts.length > 0) {
-    const cols = Math.max(2, Math.ceil(Math.sqrt(state.accounts.length)));
+  if (gridAccounts.length > 0) {
+    const cols = Math.max(2, Math.ceil(Math.sqrt(gridAccounts.length)));
     grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
     const balances = computeBalances();
-    for (const acc of state.accounts) {
+    for (const acc of gridAccounts) {
       const tile = document.createElement("div");
       tile.className = "account-tile";
       tile.setAttribute("role", "button");
       const balance = balances[acc.id];
       tile.innerHTML = `
-        ${acc.isSystem ? "" : `<button type="button" class="account-tile-menu-btn" aria-label="Account options">⋯</button>`}
+        <button type="button" class="account-tile-menu-btn" aria-label="Account options">⋯</button>
         <div class="account-tile-icon" style="background:${acc.color}33">${acc.icon}</div>
         <div class="account-tile-name">${escapeHtml(acc.name)}</div>
-        <div class="account-tile-balance">${acc.isSystem ? "—" : fmtAmount(balance)}</div>
+        <div class="account-tile-balance">${fmtAmount(balance)}</div>
       `;
       tile.addEventListener("click", () => {
         state.selectedAccountId = acc.id;
@@ -686,7 +691,7 @@ function openAdjustBalanceModal(accountId) {
     <form id="adjust-balance-form">
       <div class="field">
         <label>${escapeHtml(acc.name)} — Current Balance (֏)</label>
-        <input type="number" id="f-new-balance" step="any" value="${round2(currentBalance)}" required>
+        <input type="text" id="f-new-balance" inputmode="decimal" pattern="-?[0-9]*[.,]?[0-9]*" value="${round2(currentBalance)}" required>
         <p style="color:var(--text-dim); font-size:12px; margin-top:6px;">A Transfer record to/from Out of Wallet will be created automatically for the difference.</p>
       </div>
       <button type="submit" class="primary-btn">Save</button>
@@ -697,7 +702,7 @@ function openAdjustBalanceModal(accountId) {
 
   document.getElementById("adjust-balance-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const newBalance = round2(parseFloat(document.getElementById("f-new-balance").value));
+    const newBalance = round2(parseAmountInput(document.getElementById("f-new-balance").value));
     await createBalanceAdjustment(accountId, newBalance - currentBalance);
     closeModal();
     await reloadTransactions();
@@ -725,7 +730,8 @@ function openTransactionForm(existing, defaultAccountId) {
       .join("");
   const sortedCategories = [...state.categories].sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
   const categoryOptions = sortedCategories.length
-    ? sortedCategories.map((c) => `<option value="${c.id}" ${existing && existing.categoryId === c.id ? "selected" : ""}>${c.icon} ${escapeHtml(c.name)}</option>`).join("")
+    ? `<option value="" disabled ${existing ? "" : "selected"}>Select category</option>` +
+      sortedCategories.map((c) => `<option value="${c.id}" ${existing && existing.categoryId === c.id ? "selected" : ""}>${c.icon} ${escapeHtml(c.name)}</option>`).join("")
     : `<option value="" disabled selected>No categories — add one first</option>`;
   const tagChips = state.tags
     .map((t) => {
@@ -748,7 +754,7 @@ function openTransactionForm(existing, defaultAccountId) {
       </div>
       <div class="field">
         <label>Amount (֏)</label>
-        <input type="number" id="f-amount" inputmode="decimal" step="any" min="0" placeholder="0" value="${existing ? existing.amount : ""}" required>
+        <input type="text" id="f-amount" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="0" value="${existing ? existing.amount : ""}" required>
       </div>
 
       <div class="field" data-role="category">
@@ -878,7 +884,7 @@ function openTransactionForm(existing, defaultAccountId) {
 
   document.getElementById("tx-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const amount = round2(parseFloat(document.getElementById("f-amount").value));
+    const amount = round2(parseAmountInput(document.getElementById("f-amount").value));
     const date = document.getElementById("f-date").value;
     const notes = document.getElementById("f-notes").value.trim();
     if (!(amount > 0) || !date) return;
@@ -1049,7 +1055,7 @@ function openAccountForm(existing) {
       </div>
       <div class="field">
         <label>Initial Balance (֏)</label>
-        <input type="number" id="f-balance" step="any" value="${isEdit ? round2(existing.initialBalance || 0) : 0}" required>
+        <input type="text" id="f-balance" inputmode="decimal" pattern="-?[0-9]*[.,]?[0-9]*" value="${isEdit ? round2(existing.initialBalance || 0) : 0}" required>
         ${isEdit ? `<p style="color:var(--text-dim); font-size:12px; margin-top:6px;">Directly edits the starting balance — no transaction is created. To correct the current balance instead, use Adjust Balance in the account view.</p>` : ""}
       </div>
       <button type="submit" class="primary-btn">${isEdit ? "Save Changes" : "Add Account"}</button>
@@ -1086,7 +1092,7 @@ function openAccountForm(existing) {
     e.preventDefault();
     const name = document.getElementById("f-name").value.trim();
     const type = document.getElementById("f-type").value;
-    const balanceInput = round2(parseFloat(document.getElementById("f-balance").value));
+    const balanceInput = round2(parseAmountInput(document.getElementById("f-balance").value));
     if (!name) return;
 
     if (isEdit) {
@@ -1457,14 +1463,26 @@ function wireModal() {
   });
 }
 
+let modalScrollY = 0;
+
 function openModal(html) {
   document.getElementById("modal-sheet").innerHTML = html;
   document.getElementById("modal-backdrop").hidden = false;
+  modalScrollY = window.scrollY;
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${modalScrollY}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
 }
 
 function closeModal() {
   document.getElementById("modal-backdrop").hidden = true;
   document.getElementById("modal-sheet").innerHTML = "";
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  window.scrollTo(0, modalScrollY);
 }
 
 let toastTimer = null;
