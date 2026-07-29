@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Spend Tracker</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f172a">
+
+<!-- iOS installability -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spends">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+<link rel="stylesheet" href="styles.css?v=7">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-title-row">
+    <button id="back-btn" class="icon-btn" aria-label="Back" hidden>‹</button>
+    <h1 id="header-title">Spends</h1>
+  </div>
+  <div class="month-nav" id="month-nav">
+    <button id="month-prev" class="icon-btn" aria-label="Previous month">‹</button>
+    <span id="month-label">July 2026</span>
+    <button id="month-next" class="icon-btn" aria-label="Next month">›</button>
+  </div>
+</header>
+
+<main id="app">
+
+  <!-- SPENDS VIEW -->
+  <section id="view-spends" class="view">
+
+    <div id="account-grid" class="account-grid"></div>
+    <p id="account-grid-empty" class="empty-state" hidden>No accounts yet. Add one in the Accounts tab.</p>
+
+    <div id="all-records-section">
+      <div class="summary-card">
+        <div class="summary-row">
+          <div class="summary-stat">
+            <div class="summary-stat-label">In</div>
+            <div class="summary-stat-value stat-income" id="all-stat-income">0 ֏</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-label">Out</div>
+            <div class="summary-stat-value stat-expense" id="all-stat-expense">0 ֏</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-label">Net</div>
+            <div class="summary-stat-value" id="all-stat-net">0 ֏</div>
+          </div>
+        </div>
+        <div class="summary-sub" id="all-record-count">0 records</div>
+      </div>
+      <ul id="all-record-list" class="list"></ul>
+      <p id="all-record-empty" class="empty-state" hidden>No records yet this month.</p>
+    </div>
+
+    <div id="activity-detail" hidden>
+      <div id="account-detail-header"></div>
+      <div class="summary-card">
+        <div class="summary-row">
+          <div class="summary-stat">
+            <div class="summary-stat-label">In</div>
+            <div class="summary-stat-value stat-income" id="stat-income">0 ֏</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-label">Out</div>
+            <div class="summary-stat-value stat-expense" id="stat-expense">0 ֏</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-label">Net</div>
+            <div class="summary-stat-value" id="stat-net">0 ֏</div>
+          </div>
+        </div>
+        <div class="summary-sub" id="spend-count">0 records</div>
+      </div>
+      <ul id="spend-list" class="list"></ul>
+      <p id="spend-empty" class="empty-state" hidden>No records yet this month. Tap + to add one.</p>
+    </div>
+
+  </section>
+
+  <!-- ACCOUNTS VIEW -->
+  <section id="view-accounts" class="view" hidden>
+    <ul id="account-list" class="list"></ul>
+    <p id="account-empty" class="empty-state" hidden>No accounts yet. Tap + to add one.</p>
+  </section>
+
+  <!-- CATEGORIES VIEW -->
+  <section id="view-categories" class="view" hidden>
+    <ul id="category-list" class="list"></ul>
+    <p id="category-empty" class="empty-state" hidden>No categories yet. Tap + to add one.</p>
+  </section>
+
+  <!-- TAGS VIEW -->
+  <section id="view-tags" class="view" hidden>
+    <ul id="tag-list" class="list"></ul>
+    <p id="tag-empty" class="empty-state" hidden>No tags yet. Tap + to add one.</p>
+  </section>
+
+  <!-- EXPORT VIEW -->
+  <section id="view-export" class="view" hidden>
+    <div class="export-card">
+      <h2>Export month</h2>
+      <p class="export-hint">Export all spends for the selected month as JSON. Use the month arrows at the top to pick a month.</p>
+      <div class="export-month" id="export-month-label">July 2026</div>
+      <button id="export-btn" class="primary-btn">Export JSON</button>
+      <p class="export-hint" id="export-result"></p>
+    </div>
+  </section>
+
+</main>
+
+<button id="menu-fab" class="fab fab-menu" hidden>⋯</button>
+<button id="fab" class="fab" hidden>+</button>
+
+<!-- MODAL ROOT -->
+<div id="modal-backdrop" class="modal-backdrop" hidden>
+  <div class="modal-sheet" id="modal-sheet"></div>
+</div>
+
+<script src="app.js?v=7"></script>
+</body>
+</html>
