@@ -77,10 +77,10 @@ html, body {
   color: var(--text-dim);
   overflow-x: auto;
   scrollbar-width: none;
+  margin: 0 0 16px;
 }
 .month-nav::-webkit-scrollbar { display: none; }
-.app-header .month-nav { justify-content: flex-start; }
-#activity-detail .month-nav { margin: 0 0 16px; }
+.app-header .month-nav { justify-content: flex-start; margin: 0; }
 
 .month-nav button {
   background: none;
