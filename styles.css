@@ -91,10 +91,10 @@ html, body {
 }
 
 .chip-btn {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 13px;
+  background: var(--border);
+  border: none;
+  color: var(--text-dim);
+  font-size: 12px;
   font-weight: 500;
   line-height: 1;
   padding: 7px 12px;
@@ -103,7 +103,6 @@ html, body {
 }
 .chip-btn.active {
   background: var(--accent);
-  border-color: var(--accent);
   color: #fff;
 }
 .chip-btn[hidden] { display: none; }
