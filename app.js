@@ -470,7 +470,7 @@ function openEntityMenu() {
 }
 
 const VIEW_TITLES = {
-  spends: "Activity",
+  spends: "Expenses",
   accounts: "Accounts",
   categories: "Categories",
   tags: "Tags",
@@ -557,9 +557,6 @@ function renderAccountGrid() {
   empty.hidden = gridAccounts.length !== 0;
 
   if (gridAccounts.length > 0) {
-    const cols = Math.max(2, Math.ceil(Math.sqrt(gridAccounts.length)));
-    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-
     const balances = computeBalances();
     for (const acc of gridAccounts) {
       const tile = document.createElement("div");
