@@ -302,9 +302,14 @@ function computeBalances() {
   return map;
 }
 
-// Shared In/Out logic: money is "In" when it lands in one of accountIds,
-// "Out" when it leaves one of accountIds. Same rule for a single account
-// (per-account view) or the full set of real accounts (all-accounts view).
+// Shared In/Out logic: money is "In" when it lands in one of accountIds
+// from outside that set, "Out" when it leaves one of accountIds to outside
+// that set. Same rule for a single account (per-account view) or the full
+// set of real accounts (all-accounts view) — a transfer between two
+// accounts that are BOTH in accountIds (e.g. moving cash between your own
+// accounts in the all-accounts view) nets to zero and isn't counted as
+// either, since no money actually entered or left the tracked set; only a
+// transfer crossing the boundary (e.g. to/from Out of Wallet) counts.
 // Balance-adjustment transfers are bookkeeping corrections, not real cash
 // flow, so they're excluded.
 function computeInOut(transactions, accountIds) {
@@ -315,8 +320,8 @@ function computeInOut(transactions, accountIds) {
     if (t.type === "income") { if (idSet.has(t.accountId)) moneyIn += t.amount; }
     else if (t.type === "expense") { if (idSet.has(t.accountId)) moneyOut += t.amount; }
     else if (t.type === "transfer") {
-      if (idSet.has(t.toAccountId)) moneyIn += t.amount;
-      if (idSet.has(t.accountId)) moneyOut += t.amount;
+      if (idSet.has(t.toAccountId) && !idSet.has(t.accountId)) moneyIn += t.amount;
+      if (idSet.has(t.accountId) && !idSet.has(t.toAccountId)) moneyOut += t.amount;
     }
   }
   return { moneyIn, moneyOut };
