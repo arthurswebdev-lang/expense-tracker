@@ -132,6 +132,11 @@ const state = {
   tags: [],
   transactions: [], // current month only
   allTransactions: [], // every month, used for account balances
+  reportRange: "month", // "month" | "today" | "week" | "custom"
+  reportFrom: "",
+  reportTo: "",
+  reportIncludeIds: [], // category ids; empty = no restriction (all categories included)
+  reportExcludeIds: [], // category ids to always drop, even if included above
 };
 
 function currentMonthStr() {
@@ -192,6 +197,50 @@ function dayTransactions() {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
+function reportRangeDates() {
+  if (state.reportRange === "today") {
+    const iso = todayISO();
+    return { start: iso, end: iso };
+  }
+  if (state.reportRange === "week") return currentWeekRange();
+  if (state.reportRange === "custom") {
+    const from = state.reportFrom || todayISO();
+    const to = state.reportTo || todayISO();
+    return from <= to ? { start: from, end: to } : { start: to, end: from };
+  }
+  const monthStr = currentMonthStr();
+  const [y, m] = monthStr.split("-").map(Number);
+  const lastDay = String(new Date(y, m, 0).getDate()).padStart(2, "0");
+  return { start: `${monthStr}-01`, end: `${monthStr}-${lastDay}` };
+}
+
+function reportRangeTransactions() {
+  const { start, end } = reportRangeDates();
+  return state.allTransactions
+    .filter((t) => t.date >= start && t.date <= end)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
+}
+
+// Transfers have no category, so they only ever pass through when no
+// include filter is active (an include list can never match a transfer).
+function reportFilteredTransactions() {
+  const records = reportRangeTransactions();
+  const includes = state.reportIncludeIds;
+  const excludes = state.reportExcludeIds;
+  if (!includes.length && !excludes.length) return records;
+  return records.filter((t) => {
+    if (includes.length && !includes.includes(t.categoryId)) return false;
+    if (excludes.length && excludes.includes(t.categoryId)) return false;
+    return true;
+  });
+}
+
+function toggleId(list, id) {
+  const i = list.indexOf(id);
+  if (i === -1) list.push(id);
+  else list.splice(i, 1);
+}
+
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
@@ -237,6 +286,7 @@ async function init() {
   wireModal();
   wireFab();
   wireExport();
+  wireReports();
   await ensureOutOfWalletAccount();
   await seedDefaultCategoriesIfEmpty();
   await reloadReferenceData();
@@ -479,6 +529,7 @@ function openEntityMenu() {
     </div>
     <button type="button" class="secondary-btn" id="menu-categories-btn">🏷️ Categories</button>
     <button type="button" class="secondary-btn" id="menu-tags-btn">#️⃣ Tags</button>
+    <button type="button" class="secondary-btn" id="menu-reports-btn">📊 Reports</button>
     <button type="button" class="secondary-btn" id="menu-export-btn">⬇️ Export This Month</button>
   `);
   document.getElementById("modal-close-btn").addEventListener("click", closeModal);
@@ -494,6 +545,12 @@ function openEntityMenu() {
     state.selectedAccountId = null;
     render();
   });
+  document.getElementById("menu-reports-btn").addEventListener("click", () => {
+    closeModal();
+    state.view = "reports";
+    state.selectedAccountId = null;
+    render();
+  });
   document.getElementById("menu-export-btn").addEventListener("click", () => {
     closeModal();
     exportCurrentMonth();
@@ -506,6 +563,7 @@ const VIEW_TITLES = {
   categories: "Categories",
   tags: "Tags",
   export: "Export",
+  reports: "Reports",
 };
 
 function render() {
@@ -550,12 +608,13 @@ function render() {
     : onActivityGrid && state.weekMode ? weekRangeLabel(weekStart, weekEnd)
     : monthLabel(state.month);
   document.getElementById("export-month-label").textContent = monthLabel(state.month);
-  document.getElementById("fab").hidden = state.view === "export";
+  document.getElementById("fab").hidden = state.view === "export" || state.view === "reports";
 
   if (state.view === "spends") renderActivity();
   if (state.view === "accounts") renderAccounts();
   if (state.view === "categories") renderCategories();
   if (state.view === "tags") renderTags();
+  if (state.view === "reports") renderReports();
 }
 
 /* ---------------------------------------------------------------------
@@ -619,6 +678,51 @@ function renderAccountGrid() {
   renderAllRecords();
 }
 
+// Shared row renderer for any record list that spans multiple accounts
+// (main activity list, reports) — shows the account inline since it isn't
+// implied by context, unlike the single-account detail list.
+function createRecordListItem(t) {
+  const li = document.createElement("li");
+  li.className = "list-item";
+
+  let icon, iconBg, title, sub;
+  if (t.type === "transfer") {
+    const from = accountById(t.accountId);
+    const to = accountById(t.toAccountId);
+    icon = "🔁";
+    iconBg = "var(--border)";
+    title = "Transfer";
+    sub = `${from ? from.icon + " " + escapeHtml(from.name) : "—"} → ${to ? to.icon + " " + escapeHtml(to.name) : "—"}`;
+  } else {
+    const cat = categoryById(t.categoryId);
+    const sub_ = subcategoryById(cat, t.subcategoryId);
+    const acc = accountById(t.accountId);
+    icon = cat ? cat.icon : "❓";
+    iconBg = cat ? cat.color + "33" : "var(--border)";
+    title = cat ? cat.name + (sub_ ? " · " + sub_.name : "") : "Uncategorized";
+    sub = `${t.date} · ${acc ? acc.icon + " " + escapeHtml(acc.name) : "—"}`;
+  }
+  if (t.notes) sub += " · " + escapeHtml(t.notes);
+
+  const tagsHtml = (t.tagIds || [])
+    .map((tid) => tagById(tid))
+    .filter(Boolean)
+    .map((tg) => `<span class="tag-chip">#${escapeHtml(tg.name)}</span>`)
+    .join("");
+
+  li.innerHTML = `
+    <div class="item-icon" style="background:${iconBg}">${icon}</div>
+    <div class="item-body">
+      <div class="item-title">${escapeHtml(title)}</div>
+      <div class="item-sub">${sub}</div>
+      ${tagsHtml ? `<div style="margin-top:4px">${tagsHtml}</div>` : ""}
+    </div>
+    <div class="item-amount amount-${t.type}">${fmtSigned(t.amount, t.type)}</div>
+  `;
+  li.addEventListener("click", () => openTransactionForm(t));
+  return li;
+}
+
 function renderAllRecords() {
   const list = document.getElementById("all-record-list");
   const empty = document.getElementById("all-record-empty");
@@ -635,45 +739,7 @@ function renderAllRecords() {
   empty.hidden = records.length !== 0;
 
   for (const t of records) {
-    const li = document.createElement("li");
-    li.className = "list-item";
-
-    let icon, iconBg, title, sub;
-    if (t.type === "transfer") {
-      const from = accountById(t.accountId);
-      const to = accountById(t.toAccountId);
-      icon = "🔁";
-      iconBg = "var(--border)";
-      title = "Transfer";
-      sub = `${from ? from.icon + " " + escapeHtml(from.name) : "—"} → ${to ? to.icon + " " + escapeHtml(to.name) : "—"}`;
-    } else {
-      const cat = categoryById(t.categoryId);
-      const sub_ = subcategoryById(cat, t.subcategoryId);
-      const acc = accountById(t.accountId);
-      icon = cat ? cat.icon : "❓";
-      iconBg = cat ? cat.color + "33" : "var(--border)";
-      title = cat ? cat.name + (sub_ ? " · " + sub_.name : "") : "Uncategorized";
-      sub = `${t.date} · ${acc ? acc.icon + " " + escapeHtml(acc.name) : "—"}`;
-    }
-    if (t.notes) sub += " · " + escapeHtml(t.notes);
-
-    const tagsHtml = (t.tagIds || [])
-      .map((tid) => tagById(tid))
-      .filter(Boolean)
-      .map((tg) => `<span class="tag-chip">#${escapeHtml(tg.name)}</span>`)
-      .join("");
-
-    li.innerHTML = `
-      <div class="item-icon" style="background:${iconBg}">${icon}</div>
-      <div class="item-body">
-        <div class="item-title">${escapeHtml(title)}</div>
-        <div class="item-sub">${sub}</div>
-        ${tagsHtml ? `<div style="margin-top:4px">${tagsHtml}</div>` : ""}
-      </div>
-      <div class="item-amount amount-${t.type}">${fmtSigned(t.amount, t.type)}</div>
-    `;
-    li.addEventListener("click", () => openTransactionForm(t));
-    list.appendChild(li);
+    list.appendChild(createRecordListItem(t));
   }
 }
 
@@ -1459,6 +1525,130 @@ function openTagForm(existing) {
     render();
     toast(isEdit ? "Tag updated" : "Tag added");
   });
+}
+
+/* ---------------------------------------------------------------------
+ * REPORTS
+ * ------------------------------------------------------------------- */
+
+function wireReports() {
+  document.getElementById("report-range-btns").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    state.reportRange = btn.dataset.range;
+    if (state.reportRange === "custom" && !state.reportFrom && !state.reportTo) {
+      const { start, end } = reportRangeDates();
+      state.reportFrom = start;
+      state.reportTo = end;
+    }
+    render();
+  });
+  document.getElementById("report-from").addEventListener("change", (e) => {
+    state.reportFrom = e.target.value;
+    render();
+  });
+  document.getElementById("report-to").addEventListener("change", (e) => {
+    state.reportTo = e.target.value;
+    render();
+  });
+  document.getElementById("report-include-chips").addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip-option");
+    if (!btn) return;
+    toggleId(state.reportIncludeIds, btn.dataset.catId);
+    render();
+  });
+  document.getElementById("report-exclude-chips").addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip-option");
+    if (!btn) return;
+    toggleId(state.reportExcludeIds, btn.dataset.catId);
+    render();
+  });
+}
+
+function renderCategoryChipGroup(containerId, selectedIds) {
+  document.getElementById(containerId).innerHTML = state.categories.map((c) =>
+    `<button type="button" class="chip-option ${selectedIds.includes(c.id) ? "selected" : ""}" data-cat-id="${c.id}">${c.icon} ${escapeHtml(c.name)}</button>`
+  ).join("");
+}
+
+function renderCategoryChart(records) {
+  const donut = document.getElementById("category-donut");
+  const legend = document.getElementById("category-legend");
+  const empty = document.getElementById("category-chart-empty");
+
+  const totals = new Map(); // categoryId -> amount
+  for (const t of records) {
+    if (t.type !== "expense") continue;
+    totals.set(t.categoryId, (totals.get(t.categoryId) || 0) + t.amount);
+  }
+  const total = [...totals.values()].reduce((a, b) => a + b, 0);
+
+  if (total <= 0) {
+    donut.hidden = true;
+    legend.innerHTML = "";
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  donut.hidden = false;
+
+  const entries = [...totals.entries()]
+    .map(([catId, amount]) => ({ cat: categoryById(catId), amount }))
+    .sort((a, b) => b.amount - a.amount);
+
+  let cursor = 0;
+  const stops = entries.map(({ cat, amount }) => {
+    const color = cat ? cat.color : "var(--text-dim)";
+    const from = (cursor / total) * 100;
+    cursor += amount;
+    const to = (cursor / total) * 100;
+    return `${color} ${from}% ${to}%`;
+  });
+  donut.style.background = `conic-gradient(${stops.join(", ")})`;
+  document.getElementById("category-donut-total").textContent = fmtAmount(total);
+
+  legend.innerHTML = entries.map(({ cat, amount }) => `
+    <div class="category-legend-row">
+      <span class="category-legend-dot" style="background:${cat ? cat.color : "var(--text-dim)"}"></span>
+      <span class="category-legend-name">${cat ? cat.icon + " " + escapeHtml(cat.name) : "❓ Uncategorized"}</span>
+      <span class="category-legend-pct">${Math.round((amount / total) * 100)}%</span>
+      <span class="category-legend-amount">${fmtAmount(amount)}</span>
+    </div>
+  `).join("");
+}
+
+function renderReports() {
+  document.querySelectorAll("#report-range-btns button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.range === state.reportRange);
+  });
+  document.getElementById("report-custom-range").hidden = state.reportRange !== "custom";
+
+  const { start, end } = reportRangeDates();
+  document.getElementById("report-from").value = state.reportRange === "custom" ? state.reportFrom || start : start;
+  document.getElementById("report-to").value = state.reportRange === "custom" ? state.reportTo || end : end;
+
+  renderCategoryChipGroup("report-include-chips", state.reportIncludeIds);
+  renderCategoryChipGroup("report-exclude-chips", state.reportExcludeIds);
+
+  const records = reportFilteredTransactions();
+
+  const list = document.getElementById("report-record-list");
+  const empty = document.getElementById("report-record-empty");
+  list.innerHTML = "";
+
+  const { moneyIn, moneyOut } = computeInOut(records, realAccounts().map((a) => a.id));
+  document.getElementById("report-stat-income").textContent = fmtAmount(moneyIn);
+  document.getElementById("report-stat-expense").textContent = fmtAmount(moneyOut);
+  document.getElementById("report-stat-net").textContent = fmtAmount(moneyIn - moneyOut);
+  document.getElementById("report-record-count").textContent = records.length + (records.length === 1 ? " record" : " records");
+
+  empty.hidden = records.length !== 0;
+
+  for (const t of records) {
+    list.appendChild(createRecordListItem(t));
+  }
+
+  renderCategoryChart(records);
 }
 
 /* ---------------------------------------------------------------------

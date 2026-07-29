@@ -82,7 +82,7 @@ html, body {
 .month-nav::-webkit-scrollbar { display: none; }
 .app-header .month-nav { justify-content: flex-start; margin: 0; }
 
-.month-nav button {
+#month-prev, #month-next {
   background: none;
   border: none;
   color: var(--accent);
@@ -100,7 +100,7 @@ html, body {
 }
 #month-label:active { opacity: 0.6; }
 
-.month-nav .chip-btn {
+.chip-btn {
   background: var(--border);
   border: 1.5px solid transparent;
   color: var(--text-dim);
@@ -113,7 +113,7 @@ html, body {
   flex-shrink: 0;
   white-space: nowrap;
 }
-.month-nav .chip-btn.active {
+.chip-btn.active {
   border-color: var(--accent);
   color: var(--text);
   font-weight: 600;
@@ -636,6 +636,85 @@ html, body {
 .export-card h2 { margin-top: 0; font-size: 18px; }
 .export-hint { color: var(--text-dim); font-size: 13px; }
 .export-month { font-weight: 600; font-size: 17px; margin: 10px 0; }
+
+.report-range-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.report-custom-range {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.report-custom-range .field { flex: 1; margin-bottom: 0; }
+
+.category-chart-card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.category-chart-title {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+.category-donut {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+}
+.category-donut[hidden] { display: none; }
+.category-donut-hole {
+  position: absolute;
+  inset: 24%;
+  border-radius: 50%;
+  background: var(--card-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.category-donut-total { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+.category-donut-total-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+}
+
+.category-legend { display: flex; flex-direction: column; gap: 10px; }
+.category-legend-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.category-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.category-legend-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.category-legend-pct {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  width: 34px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.category-legend-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 70px;
+  text-align: right;
+}
 
 .toast {
   position: fixed;
