@@ -109,7 +109,7 @@ async function seedDefaultCategoriesIfEmpty() {
       icon: c.icon,
       color: c.color,
       usageCount: 0,
-      subcategories: c.subs.map((name) => ({ id: uid(), name, color: c.color, usageCount: 0, createdAt: Date.now() })),
+      subcategories: c.subs.map((name) => ({ id: uid(), name, usageCount: 0, createdAt: Date.now() })),
       createdAt: Date.now(),
     });
   }
@@ -574,7 +574,7 @@ function renderAllRecords() {
       icon = cat ? cat.icon : "❓";
       iconBg = cat ? cat.color + "33" : "var(--border)";
       title = cat ? cat.name + (sub_ ? " · " + sub_.name : "") : "Uncategorized";
-      sub = `${t.date} · ${acc ? escapeHtml(acc.name) : "—"}`;
+      sub = `${t.date} · ${acc ? acc.icon + " " + escapeHtml(acc.name) : "—"}`;
     }
     if (t.notes) sub += " · " + escapeHtml(t.notes);
 
@@ -1206,9 +1206,6 @@ function openCategoryForm(existing) {
     container.innerHTML = localSubcats.map((s) => `
       <div class="subcat-row" data-id="${s.id}">
         <input type="text" class="subcat-name-input" value="${escapeHtml(s.name)}">
-        <div class="subcat-dots">
-          ${COLOR_PALETTE.slice(0, 6).map((c) => `<button type="button" class="subcat-dot ${s.color === c ? "selected" : ""}" data-color="${c}" style="background:${c}"></button>`).join("")}
-        </div>
         <button type="button" class="subcat-delete-btn" title="Delete">✕</button>
       </div>
     `).join("");
@@ -1219,14 +1216,7 @@ function openCategoryForm(existing) {
     const row = e.target.closest(".subcat-row");
     if (!row) return;
     const id = row.dataset.id;
-    const sub = localSubcats.find((s) => s.id === id);
-    if (!sub) return;
 
-    if (e.target.classList.contains("subcat-dot")) {
-      sub.color = e.target.dataset.color;
-      renderSubcatRows();
-      return;
-    }
     if (e.target.classList.contains("subcat-delete-btn")) {
       const usage = await DB.getAllByIndex("transactions", "subcategoryId", id);
       if (usage.length > 0) {
@@ -1248,7 +1238,7 @@ function openCategoryForm(existing) {
     const input = document.getElementById("subcat-new-name");
     const name = input.value.trim();
     if (!name) return;
-    localSubcats.push({ id: uid(), name, color: selectedColor, usageCount: 0, createdAt: Date.now() });
+    localSubcats.push({ id: uid(), name, usageCount: 0, createdAt: Date.now() });
     input.value = "";
     renderSubcatRows();
   });

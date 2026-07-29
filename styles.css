@@ -176,16 +176,6 @@ html, body {
   font-size: 14px;
   min-width: 0;
 }
-.subcat-dots { display: flex; gap: 4px; flex-shrink: 0; }
-.subcat-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  padding: 0;
-}
-.subcat-dot.selected { border-color: var(--text); }
 .subcat-delete-btn {
   background: none;
   border: none;
