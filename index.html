@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Spends">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
 
@@ -24,9 +24,11 @@
     <h1 id="header-title">Spends</h1>
   </div>
   <div class="month-nav" id="month-nav">
-    <button id="month-prev" class="icon-btn" aria-label="Previous month">‹</button>
-    <span id="month-label">July 2026</span>
-    <button id="month-next" class="icon-btn" aria-label="Next month">›</button>
+    <div class="month-pill chip-btn" id="month-pill">
+      <button id="month-prev" class="icon-btn" aria-label="Previous month">‹</button>
+      <span id="month-label">July 2026</span>
+      <button id="month-next" class="icon-btn" aria-label="Next month">›</button>
+    </div>
     <button id="today-btn" class="chip-btn" type="button">Today</button>
     <button id="week-btn" class="chip-btn" type="button">This Week</button>
   </div>
@@ -126,6 +128,6 @@
   <div class="modal-sheet" id="modal-sheet"></div>
 </div>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

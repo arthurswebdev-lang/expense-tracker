@@ -125,6 +125,7 @@ const state = {
   view: "spends",
   month: currentMonthStr(),
   weekMode: false, // true = record list is filtered to the current calendar week instead of state.month
+  dayMode: false, // true = record list is filtered to just today, instead of state.month
   selectedAccountId: null, // null = account grid; set = drilled into that account's activity
   accounts: [],
   categories: [],
@@ -173,6 +174,22 @@ function weekTransactions() {
   return state.allTransactions
     .filter((t) => t.date >= start && t.date <= end)
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
+}
+
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function todayLabel() {
+  return new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function dayTransactions() {
+  const today = todayISO();
+  return state.allTransactions
+    .filter((t) => t.date === today)
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 function round2(n) {
@@ -406,24 +423,33 @@ function wireNav() {
 
   document.getElementById("month-prev").addEventListener("click", async () => {
     state.weekMode = false;
+    state.dayMode = false;
     state.month = shiftMonth(state.month, -1);
     await reloadTransactions();
     render();
   });
   document.getElementById("month-next").addEventListener("click", async () => {
     state.weekMode = false;
+    state.dayMode = false;
     state.month = shiftMonth(state.month, 1);
     await reloadTransactions();
     render();
   });
-  document.getElementById("today-btn").addEventListener("click", async () => {
+  document.getElementById("month-label").addEventListener("click", async () => {
     state.weekMode = false;
+    state.dayMode = false;
     state.month = currentMonthStr();
     await reloadTransactions();
     render();
   });
+  document.getElementById("today-btn").addEventListener("click", () => {
+    state.dayMode = !state.dayMode;
+    state.weekMode = false;
+    render();
+  });
   document.getElementById("week-btn").addEventListener("click", () => {
     state.weekMode = !state.weekMode;
+    state.dayMode = false;
     render();
   });
 }
@@ -493,7 +519,7 @@ function render() {
   document.getElementById("back-btn").hidden = !(inAccountDetail || state.view !== "spends");
   document.getElementById("menu-fab").hidden = !onActivityGrid;
 
-  if (!onActivityGrid) state.weekMode = false;
+  if (!onActivityGrid) { state.weekMode = false; state.dayMode = false; }
 
   const monthNav = document.getElementById("month-nav");
   if (inAccountDetail) {
@@ -510,10 +536,14 @@ function render() {
   }
   document.getElementById("today-btn").hidden = !onActivityGrid;
   document.getElementById("week-btn").hidden = !onActivityGrid;
+  document.getElementById("today-btn").classList.toggle("active", onActivityGrid && state.dayMode);
   document.getElementById("week-btn").classList.toggle("active", onActivityGrid && state.weekMode);
+  document.getElementById("month-pill").classList.toggle("active", onActivityGrid && !state.weekMode && !state.dayMode);
   const { start: weekStart, end: weekEnd } = currentWeekRange();
   document.getElementById("month-label").textContent =
-    onActivityGrid && state.weekMode ? weekRangeLabel(weekStart, weekEnd) : monthLabel(state.month);
+    onActivityGrid && state.dayMode ? todayLabel()
+    : onActivityGrid && state.weekMode ? weekRangeLabel(weekStart, weekEnd)
+    : monthLabel(state.month);
   document.getElementById("export-month-label").textContent = monthLabel(state.month);
   document.getElementById("fab").hidden = state.view === "export";
 
@@ -589,7 +619,7 @@ function renderAllRecords() {
   const empty = document.getElementById("all-record-empty");
   list.innerHTML = "";
 
-  const records = state.weekMode ? weekTransactions() : state.transactions;
+  const records = state.dayMode ? dayTransactions() : state.weekMode ? weekTransactions() : state.transactions;
 
   const { moneyIn, moneyOut } = computeInOut(records, realAccounts().map((a) => a.id));
   document.getElementById("all-stat-income").textContent = fmtAmount(moneyIn);

@@ -96,11 +96,13 @@ html, body {
 #month-label {
   flex-shrink: 0;
   white-space: nowrap;
+  cursor: pointer;
 }
+#month-label:active { opacity: 0.6; }
 
 .month-nav .chip-btn {
   background: var(--border);
-  border: none;
+  border: 1.5px solid transparent;
   color: var(--text-dim);
   font-size: 12px;
   font-weight: 500;
@@ -112,11 +114,23 @@ html, body {
   white-space: nowrap;
 }
 .month-nav .chip-btn.active {
-  background: var(--card-bg);
+  border-color: var(--accent);
   color: var(--text);
   font-weight: 600;
 }
 .chip-btn[hidden] { display: none; }
+
+.month-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 12px;
+}
+.month-pill #month-prev,
+.month-pill #month-next {
+  padding: 0 2px;
+  font-size: 18px;
+}
 
 #month-label { font-weight: 600; color: var(--text); min-width: 130px; text-align: center; }
 
