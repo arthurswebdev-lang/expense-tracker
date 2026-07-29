@@ -124,6 +124,7 @@ const OUT_OF_WALLET_ID = "out-of-wallet";
 const state = {
   view: "spends",
   month: currentMonthStr(),
+  weekMode: false, // true = record list is filtered to the current calendar week instead of state.month
   selectedAccountId: null, // null = account grid; set = drilled into that account's activity
   accounts: [],
   categories: [],
@@ -147,6 +148,31 @@ function monthLabel(monthStr) {
   const [y, m] = monthStr.split("-").map(Number);
   const d = new Date(y, m - 1, 1);
   return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
+function currentWeekRange() {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sun .. 6 = Sat
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  const toISO = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  return { start: toISO(monday), end: toISO(sunday) };
+}
+
+function weekRangeLabel(start, end) {
+  const fmt = (iso) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  };
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+function weekTransactions() {
+  const { start, end } = currentWeekRange();
+  return state.allTransactions
+    .filter((t) => t.date >= start && t.date <= end)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
 }
 
 function round2(n) {
@@ -379,13 +405,25 @@ function wireNav() {
   });
 
   document.getElementById("month-prev").addEventListener("click", async () => {
+    state.weekMode = false;
     state.month = shiftMonth(state.month, -1);
     await reloadTransactions();
     render();
   });
   document.getElementById("month-next").addEventListener("click", async () => {
+    state.weekMode = false;
     state.month = shiftMonth(state.month, 1);
     await reloadTransactions();
+    render();
+  });
+  document.getElementById("today-btn").addEventListener("click", async () => {
+    state.weekMode = false;
+    state.month = currentMonthStr();
+    await reloadTransactions();
+    render();
+  });
+  document.getElementById("week-btn").addEventListener("click", () => {
+    state.weekMode = !state.weekMode;
     render();
   });
 }
@@ -455,6 +493,8 @@ function render() {
   document.getElementById("back-btn").hidden = !(inAccountDetail || state.view !== "spends");
   document.getElementById("menu-fab").hidden = !onActivityGrid;
 
+  if (!onActivityGrid) state.weekMode = false;
+
   const monthNav = document.getElementById("month-nav");
   if (inAccountDetail) {
     document.getElementById("spend-list").before(monthNav);
@@ -468,7 +508,12 @@ function render() {
   } else {
     monthNav.hidden = true;
   }
-  document.getElementById("month-label").textContent = monthLabel(state.month);
+  document.getElementById("today-btn").hidden = !onActivityGrid;
+  document.getElementById("week-btn").hidden = !onActivityGrid;
+  document.getElementById("week-btn").classList.toggle("active", onActivityGrid && state.weekMode);
+  const { start: weekStart, end: weekEnd } = currentWeekRange();
+  document.getElementById("month-label").textContent =
+    onActivityGrid && state.weekMode ? weekRangeLabel(weekStart, weekEnd) : monthLabel(state.month);
   document.getElementById("export-month-label").textContent = monthLabel(state.month);
   document.getElementById("fab").hidden = state.view === "export";
 
@@ -547,15 +592,17 @@ function renderAllRecords() {
   const empty = document.getElementById("all-record-empty");
   list.innerHTML = "";
 
-  const { moneyIn, moneyOut } = computeInOut(state.transactions, realAccounts().map((a) => a.id));
+  const records = state.weekMode ? weekTransactions() : state.transactions;
+
+  const { moneyIn, moneyOut } = computeInOut(records, realAccounts().map((a) => a.id));
   document.getElementById("all-stat-income").textContent = fmtAmount(moneyIn);
   document.getElementById("all-stat-expense").textContent = fmtAmount(moneyOut);
   document.getElementById("all-stat-net").textContent = fmtAmount(moneyIn - moneyOut);
-  document.getElementById("all-record-count").textContent = state.transactions.length + (state.transactions.length === 1 ? " record" : " records");
+  document.getElementById("all-record-count").textContent = records.length + (records.length === 1 ? " record" : " records");
 
-  empty.hidden = state.transactions.length !== 0;
+  empty.hidden = records.length !== 0;
 
-  for (const t of state.transactions) {
+  for (const t of records) {
     const li = document.createElement("li");
     li.className = "list-item";
 

@@ -69,9 +69,11 @@ html, body {
 
 .month-nav {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  row-gap: 8px;
   font-size: 15px;
   color: var(--text-dim);
 }
@@ -87,6 +89,24 @@ html, body {
   padding: 2px 8px;
   cursor: pointer;
 }
+
+.chip-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 7px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.chip-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.chip-btn[hidden] { display: none; }
 
 #month-label { font-weight: 600; color: var(--text); min-width: 130px; text-align: center; }
 
