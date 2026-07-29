@@ -479,6 +479,14 @@ html, body {
 }
 .field textarea { resize: vertical; min-height: 60px; }
 
+.field input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .field select:required:invalid {
   border-color: #ef4444;
   color: var(--text-dim);
