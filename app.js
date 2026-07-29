@@ -149,9 +149,12 @@ function monthLabel(monthStr) {
   return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
+function round2(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
 function fmtAmount(n) {
-  const rounded = Math.round(Number(n) || 0);
-  return rounded.toLocaleString("en-US") + " ֏";
+  return round2(n).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " ֏";
 }
 
 function fmtSigned(n, type) {
@@ -683,7 +686,7 @@ function openAdjustBalanceModal(accountId) {
     <form id="adjust-balance-form">
       <div class="field">
         <label>${escapeHtml(acc.name)} — Current Balance (֏)</label>
-        <input type="number" id="f-new-balance" step="1" value="${Math.round(currentBalance)}" required>
+        <input type="number" id="f-new-balance" step="0.01" value="${round2(currentBalance)}" required>
         <p style="color:var(--text-dim); font-size:12px; margin-top:6px;">A Transfer record to/from Out of Wallet will be created automatically for the difference.</p>
       </div>
       <button type="submit" class="primary-btn">Save</button>
@@ -694,7 +697,7 @@ function openAdjustBalanceModal(accountId) {
 
   document.getElementById("adjust-balance-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const newBalance = parseFloat(document.getElementById("f-new-balance").value) || 0;
+    const newBalance = round2(parseFloat(document.getElementById("f-new-balance").value));
     await createBalanceAdjustment(accountId, newBalance - currentBalance);
     closeModal();
     await reloadTransactions();
@@ -745,7 +748,7 @@ function openTransactionForm(existing, defaultAccountId) {
       </div>
       <div class="field">
         <label>Amount (֏)</label>
-        <input type="number" id="f-amount" inputmode="decimal" step="1" min="0" placeholder="0" value="${existing ? existing.amount : ""}" required>
+        <input type="number" id="f-amount" inputmode="decimal" step="0.01" min="0" placeholder="0" value="${existing ? existing.amount : ""}" required>
       </div>
 
       <div class="field" data-role="category">
@@ -875,7 +878,7 @@ function openTransactionForm(existing, defaultAccountId) {
 
   document.getElementById("tx-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const amount = parseFloat(document.getElementById("f-amount").value);
+    const amount = round2(parseFloat(document.getElementById("f-amount").value));
     const date = document.getElementById("f-date").value;
     const notes = document.getElementById("f-notes").value.trim();
     if (!(amount > 0) || !date) return;
@@ -1046,7 +1049,7 @@ function openAccountForm(existing) {
       </div>
       <div class="field">
         <label>Initial Balance (֏)</label>
-        <input type="number" id="f-balance" step="1" value="${isEdit ? Math.round(existing.initialBalance || 0) : 0}" required>
+        <input type="number" id="f-balance" step="0.01" value="${isEdit ? round2(existing.initialBalance || 0) : 0}" required>
         ${isEdit ? `<p style="color:var(--text-dim); font-size:12px; margin-top:6px;">Directly edits the starting balance — no transaction is created. To correct the current balance instead, use Adjust Balance in the account view.</p>` : ""}
       </div>
       <button type="submit" class="primary-btn">${isEdit ? "Save Changes" : "Add Account"}</button>
@@ -1083,7 +1086,7 @@ function openAccountForm(existing) {
     e.preventDefault();
     const name = document.getElementById("f-name").value.trim();
     const type = document.getElementById("f-type").value;
-    const balanceInput = parseFloat(document.getElementById("f-balance").value) || 0;
+    const balanceInput = round2(parseFloat(document.getElementById("f-balance").value));
     if (!name) return;
 
     if (isEdit) {
