@@ -686,7 +686,7 @@ function openAdjustBalanceModal(accountId) {
     <form id="adjust-balance-form">
       <div class="field">
         <label>${escapeHtml(acc.name)} — Current Balance (֏)</label>
-        <input type="number" id="f-new-balance" step="0.01" value="${round2(currentBalance)}" required>
+        <input type="number" id="f-new-balance" step="any" value="${round2(currentBalance)}" required>
         <p style="color:var(--text-dim); font-size:12px; margin-top:6px;">A Transfer record to/from Out of Wallet will be created automatically for the difference.</p>
       </div>
       <button type="submit" class="primary-btn">Save</button>
@@ -748,7 +748,7 @@ function openTransactionForm(existing, defaultAccountId) {
       </div>
       <div class="field">
         <label>Amount (֏)</label>
-        <input type="number" id="f-amount" inputmode="decimal" step="0.01" min="0" placeholder="0" value="${existing ? existing.amount : ""}" required>
+        <input type="number" id="f-amount" inputmode="decimal" step="any" min="0" placeholder="0" value="${existing ? existing.amount : ""}" required>
       </div>
 
       <div class="field" data-role="category">
@@ -1049,7 +1049,7 @@ function openAccountForm(existing) {
       </div>
       <div class="field">
         <label>Initial Balance (֏)</label>
-        <input type="number" id="f-balance" step="0.01" value="${isEdit ? round2(existing.initialBalance || 0) : 0}" required>
+        <input type="number" id="f-balance" step="any" value="${isEdit ? round2(existing.initialBalance || 0) : 0}" required>
         ${isEdit ? `<p style="color:var(--text-dim); font-size:12px; margin-top:6px;">Directly edits the starting balance — no transaction is created. To correct the current balance instead, use Adjust Balance in the account view.</p>` : ""}
       </div>
       <button type="submit" class="primary-btn">${isEdit ? "Save Changes" : "Add Account"}</button>
