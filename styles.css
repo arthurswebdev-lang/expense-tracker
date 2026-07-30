@@ -333,8 +333,16 @@ html, body {
 }
 .account-detail-card .item-icon { width: 46px; height: 46px; font-size: 22px; flex-shrink: 0; }
 .account-detail-info { flex: 1; min-width: 0; }
-.account-detail-name { font-weight: 700; font-size: 17px; }
-.account-detail-balance { color: var(--text-dim); font-size: 13px; margin-top: 2px; }
+.account-detail-name { font-weight: 500; font-size: 13px; color: var(--text-dim); }
+.account-detail-balance {
+  font-weight: 700;
+  font-size: 28px;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .adjust-balance-btn {
   flex-shrink: 0;
   width: 36px;
