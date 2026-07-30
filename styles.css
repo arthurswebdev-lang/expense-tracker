@@ -253,8 +253,7 @@ html, body {
 
 .account-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 20px;
 }
 .account-grid[hidden] { display: none; }
@@ -263,12 +262,11 @@ html, body {
   border-radius: 14px;
   background: var(--card-bg);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
-  gap: 3px;
-  padding: 24px 4px 8px;
-  text-align: center;
+  gap: 10px;
+  padding: 24px 12px 10px 10px;
+  text-align: left;
   cursor: pointer;
   border: none;
   color: var(--text);
@@ -288,17 +286,26 @@ html, body {
   cursor: pointer;
 }
 .account-tile-icon {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.account-tile-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .account-tile-name {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 11px;
+  color: var(--text-dim);
   line-height: 1.2;
   max-width: 100%;
   overflow: hidden;
@@ -306,8 +313,9 @@ html, body {
   white-space: nowrap;
 }
 .account-tile-balance {
-  font-size: 10px;
-  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;

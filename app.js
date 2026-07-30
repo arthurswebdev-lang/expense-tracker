@@ -135,8 +135,12 @@ const state = {
   reportRange: "month", // "month" | "today" | "week" | "custom"
   reportFrom: "",
   reportTo: "",
-  reportIncludeIds: [], // category ids; empty = no restriction (all categories included)
-  reportExcludeIds: [], // category ids to always drop, even if included above
+  reportFilterMode: "include", // "include" | "exclude" — only one is active/applied at a time
+  reportIncludeIds: [], // category ids to include; remembered even while exclude mode is active
+  reportExcludeIds: [], // category ids to exclude; remembered even while include mode is active
+  reportTagFilterMode: "include", // "include" | "exclude" — independent of the category filter above
+  reportTagIncludeIds: [], // tag ids; a record matches if it has ANY of these
+  reportTagExcludeIds: [], // tag ids; a record is dropped if it has ANY of these
 };
 
 function currentMonthStr() {
@@ -203,6 +207,12 @@ function reportRangeDates() {
     return { start: iso, end: iso };
   }
   if (state.reportRange === "week") return currentWeekRange();
+  if (state.reportRange === "last30") {
+    const end = new Date();
+    const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 29);
+    const toISO = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    return { start: toISO(start), end: toISO(end) };
+  }
   if (state.reportRange === "custom") {
     const from = state.reportFrom || todayISO();
     const to = state.reportTo || todayISO();
@@ -221,18 +231,31 @@ function reportRangeTransactions() {
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
 }
 
-// Transfers have no category, so they only ever pass through when no
-// include filter is active (an include list can never match a transfer).
+// Only the active mode's list is applied — switching modes doesn't discard
+// the other list, it just stops using it, so flipping back keeps your picks.
+// Transfers have no category, so in include mode they only pass through
+// when the include list is empty (an include list can never match one).
 function reportFilteredTransactions() {
-  const records = reportRangeTransactions();
-  const includes = state.reportIncludeIds;
-  const excludes = state.reportExcludeIds;
-  if (!includes.length && !excludes.length) return records;
-  return records.filter((t) => {
-    if (includes.length && !includes.includes(t.categoryId)) return false;
-    if (excludes.length && excludes.includes(t.categoryId)) return false;
-    return true;
-  });
+  let records = reportRangeTransactions();
+
+  const catIds = state.reportFilterMode === "exclude" ? state.reportExcludeIds : state.reportIncludeIds;
+  if (catIds.length) {
+    records = records.filter((t) =>
+      state.reportFilterMode === "exclude" ? !catIds.includes(t.categoryId) : catIds.includes(t.categoryId)
+    );
+  }
+
+  // Tag filter matches if the record has ANY of the selected tags (OR, not
+  // AND) — records with no tags at all can never match an include filter.
+  const tagIds = state.reportTagFilterMode === "exclude" ? state.reportTagExcludeIds : state.reportTagIncludeIds;
+  if (tagIds.length) {
+    records = records.filter((t) => {
+      const hasAny = (t.tagIds || []).some((id) => tagIds.includes(id));
+      return state.reportTagFilterMode === "exclude" ? !hasAny : hasAny;
+    });
+  }
+
+  return records;
 }
 
 function toggleId(list, id) {
@@ -294,7 +317,21 @@ async function init() {
   render();
 
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js").then((reg) => {
+      reg.update().catch(() => {});
+    }).catch(() => {});
+
+    // iOS home-screen apps in particular won't pick up a new version just by
+    // reopening — the old service worker keeps serving the page it already
+    // controls. Once a new worker activates (sw.js already calls
+    // skipWaiting/clients.claim on install/activate) this reloads the page
+    // once so the update actually takes effect instead of sitting stale.
+    let reloadedForUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadedForUpdate) return;
+      reloadedForUpdate = true;
+      window.location.reload();
+    });
   }
 }
 
@@ -322,6 +359,7 @@ async function reloadReferenceData() {
   state.accounts.sort((a, b) => (a.isSystem ? 1 : b.isSystem ? -1 : a.name.localeCompare(b.name)));
   state.categories.forEach((c) => { if (!c.subcategories) c.subcategories = []; });
   state.categories.sort((a, b) => a.name.localeCompare(b.name));
+  state.tags.forEach((t) => { if (!t.color) t.color = COLOR_PALETTE[0]; });
   state.tags.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -511,10 +549,8 @@ function wireNav() {
 
 function wireFab() {
   document.getElementById("fab").addEventListener("click", () => {
-    if (state.view === "spends") {
-      if (state.selectedAccountId) openTransactionForm(null, state.selectedAccountId);
-      else openAccountForm();
-    } else if (state.view === "accounts") openAccountForm();
+    if (state.view === "spends") openTransactionForm(null, state.selectedAccountId);
+    else if (state.view === "accounts") openAccountForm();
     else if (state.view === "categories") openCategoryForm();
     else if (state.view === "tags") openTagForm();
   });
@@ -527,12 +563,19 @@ function openEntityMenu() {
       <h2>Manage</h2>
       <button class="modal-close" id="modal-close-btn">✕</button>
     </div>
+    <button type="button" class="secondary-btn" id="menu-accounts-btn">🏦 Accounts</button>
     <button type="button" class="secondary-btn" id="menu-categories-btn">🏷️ Categories</button>
     <button type="button" class="secondary-btn" id="menu-tags-btn">#️⃣ Tags</button>
     <button type="button" class="secondary-btn" id="menu-reports-btn">📊 Reports</button>
     <button type="button" class="secondary-btn" id="menu-export-btn">⬇️ Export This Month</button>
   `);
   document.getElementById("modal-close-btn").addEventListener("click", closeModal);
+  document.getElementById("menu-accounts-btn").addEventListener("click", () => {
+    closeModal();
+    state.view = "accounts";
+    state.selectedAccountId = null;
+    render();
+  });
   document.getElementById("menu-categories-btn").addEventListener("click", () => {
     closeModal();
     state.view = "categories";
@@ -625,6 +668,26 @@ function accountById(id) { return state.accounts.find((a) => a.id === id); }
 function categoryById(id) { return state.categories.find((c) => c.id === id); }
 function tagById(id) { return state.tags.find((t) => t.id === id); }
 
+function tagChipsHtml(tagIds) {
+  return (tagIds || [])
+    .map((tid) => tagById(tid))
+    .filter(Boolean)
+    .map((tg) => `<span class="tag-chip" style="background:${tg.color}33;color:${tg.color}">#${escapeHtml(tg.name)}</span>`)
+    .join("");
+}
+
+// Toggleable pill for tag pickers (record tag picker, report tag filter) —
+// colored by the tag's own color instead of the generic accent fill.
+function tagToggleStyle(tag, selected) {
+  return selected
+    ? `background:${tag.color};border-color:${tag.color};color:#fff;`
+    : `border-color:${tag.color}66;color:${tag.color};`;
+}
+
+function tagToggleChipHtml(tag, selected) {
+  return `<button type="button" class="chip-option" data-tag-id="${tag.id}" style="${tagToggleStyle(tag, selected)}">#${escapeHtml(tag.name)}</button>`;
+}
+
 /* ---------------------------------------------------------------------
  * ACTIVITY (transactions: expense / income / transfer)
  * ------------------------------------------------------------------- */
@@ -651,6 +714,9 @@ function renderAccountGrid() {
   empty.hidden = gridAccounts.length !== 0;
 
   if (gridAccounts.length > 0) {
+    const cols = Math.max(1, Math.ceil(Math.sqrt(gridAccounts.length)));
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
     const balances = computeBalances();
     for (const acc of gridAccounts) {
       const tile = document.createElement("div");
@@ -660,8 +726,10 @@ function renderAccountGrid() {
       tile.innerHTML = `
         <button type="button" class="account-tile-menu-btn" aria-label="Account options">⋯</button>
         <div class="account-tile-icon" style="background:${acc.color}33">${acc.icon}</div>
-        <div class="account-tile-name">${escapeHtml(acc.name)}</div>
-        <div class="account-tile-balance">${fmtAmount(balance)}</div>
+        <div class="account-tile-info">
+          <div class="account-tile-name">${escapeHtml(acc.name)}</div>
+          <div class="account-tile-balance">${fmtAmount(balance)}</div>
+        </div>
       `;
       tile.addEventListener("click", () => {
         state.selectedAccountId = acc.id;
@@ -704,11 +772,7 @@ function createRecordListItem(t) {
   }
   if (t.notes) sub += " · " + escapeHtml(t.notes);
 
-  const tagsHtml = (t.tagIds || [])
-    .map((tid) => tagById(tid))
-    .filter(Boolean)
-    .map((tg) => `<span class="tag-chip">#${escapeHtml(tg.name)}</span>`)
-    .join("");
+  const tagsHtml = tagChipsHtml(t.tagIds);
 
   li.innerHTML = `
     <div class="item-icon" style="background:${iconBg}">${icon}</div>
@@ -803,11 +867,7 @@ function renderAccountDetail(accountId) {
     }
     if (t.notes) sub += " · " + escapeHtml(t.notes);
 
-    const tagsHtml = (t.tagIds || [])
-      .map((tid) => tagById(tid))
-      .filter(Boolean)
-      .map((tg) => `<span class="tag-chip">#${escapeHtml(tg.name)}</span>`)
-      .join("");
+    const tagsHtml = tagChipsHtml(t.tagIds);
 
     li.innerHTML = `
       <div class="item-icon" style="background:${iconBg}">${icon}</div>
@@ -867,8 +927,10 @@ function openTransactionForm(existing, defaultAccountId) {
   const defaultDate = existing ? existing.date : suggestedDateForMonth(state.month);
 
   const realAccountOptions = (selectedId) =>
+    `<option value="" disabled ${selectedId ? "" : "selected"}>Select account</option>` +
     realAccounts().map((a) => `<option value="${a.id}" ${selectedId === a.id ? "selected" : ""}>${a.icon} ${escapeHtml(a.name)}</option>`).join("");
   const transferAccountOptions = (selectedId, excludeId) =>
+    `<option value="" disabled ${selectedId ? "" : "selected"}>Select account</option>` +
     state.accounts
       .filter((a) => a.id !== excludeId)
       .map((a) => `<option value="${a.id}" ${selectedId === a.id ? "selected" : ""}>${a.icon} ${escapeHtml(a.name)}</option>`)
@@ -879,10 +941,7 @@ function openTransactionForm(existing, defaultAccountId) {
       sortedCategories.map((c) => `<option value="${c.id}" ${existing && existing.categoryId === c.id ? "selected" : ""}>${c.icon} ${escapeHtml(c.name)}</option>`).join("")
     : `<option value="" disabled selected>No categories — add one first</option>`;
   const tagChips = state.tags
-    .map((t) => {
-      const selected = existing && (existing.tagIds || []).includes(t.id);
-      return `<button type="button" class="chip-option ${selected ? "selected" : ""}" data-tag-id="${t.id}">#${escapeHtml(t.name)}</button>`;
-    })
+    .map((t) => tagToggleChipHtml(t, existing && (existing.tagIds || []).includes(t.id)))
     .join("");
 
   openModal(`
@@ -902,20 +961,6 @@ function openTransactionForm(existing, defaultAccountId) {
         <input type="text" id="f-amount" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="0" value="${existing ? existing.amount : ""}" required>
       </div>
 
-      <div class="field" data-role="category">
-        <label>Category</label>
-        <select id="f-category">${categoryOptions}</select>
-      </div>
-      <div class="field" data-role="subcategory" hidden>
-        <label>Subcategory</label>
-        <select id="f-subcategory"></select>
-      </div>
-
-      <div class="field">
-        <label>Date</label>
-        <input type="date" id="f-date" value="${defaultDate}" required>
-      </div>
-
       <div class="field" data-role="single-account">
         <label id="f-account-label">Account</label>
         <select id="f-account" required>${realAccountOptions(existing ? existing.accountId : defaultAccountId)}</select>
@@ -930,6 +975,20 @@ function openTransactionForm(existing, defaultAccountId) {
         <select id="f-to-account">${transferAccountOptions(existing ? existing.toAccountId : null, existing ? existing.accountId : defaultAccountId)}</select>
       </div>
 
+      <div class="field" data-role="category">
+        <label>Category</label>
+        <select id="f-category">${categoryOptions}</select>
+      </div>
+      <div class="field" data-role="subcategory" hidden>
+        <label>Subcategory</label>
+        <select id="f-subcategory"></select>
+      </div>
+
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="f-date" value="${defaultDate}" required>
+      </div>
+
       ${state.tags.length ? `<div class="field"><label>Tags</label><div class="chip-grid" id="f-tags">${tagChips}</div></div>` : ""}
       <div class="field">
         <label>Notes</label>
@@ -939,6 +998,8 @@ function openTransactionForm(existing, defaultAccountId) {
       ${isEdit ? `<button type="button" class="danger-btn" id="delete-tx-btn">Delete</button>` : ""}
     </form>
   `);
+
+  if (!isEdit) document.getElementById("f-amount").focus();
 
   let currentType = type;
   function applyTypeVisibility() {
@@ -1010,8 +1071,11 @@ function openTransactionForm(existing, defaultAccountId) {
     const btn = e.target.closest(".chip-option");
     if (!btn) return;
     const id = btn.dataset.tagId;
-    if (selectedTagIds.has(id)) { selectedTagIds.delete(id); btn.classList.remove("selected"); }
-    else { selectedTagIds.add(id); btn.classList.add("selected"); }
+    const tag = tagById(id);
+    const nowSelected = !selectedTagIds.has(id);
+    if (nowSelected) selectedTagIds.add(id);
+    else selectedTagIds.delete(id);
+    if (tag) btn.setAttribute("style", tagToggleStyle(tag, nowSelected));
   });
 
   document.getElementById("modal-close-btn").addEventListener("click", closeModal);
@@ -1464,9 +1528,8 @@ function renderTags() {
     const li = document.createElement("li");
     li.className = "list-item";
     li.innerHTML = `
-      <div class="item-icon">#️⃣</div>
       <div class="item-body">
-        <div class="item-title">${escapeHtml(tag.name)}</div>
+        <span class="tag-chip" style="background:${tag.color}33;color:${tag.color}">#${escapeHtml(tag.name)}</span>
       </div>
       <div class="item-chevron">›</div>
     `;
@@ -1477,6 +1540,10 @@ function renderTags() {
 
 function openTagForm(existing) {
   const isEdit = !!existing;
+  const colorSwatches = COLOR_PALETTE.map(
+    (color) => `<button type="button" class="icon-option ${existing && existing.color === color ? "selected" : ""}" data-color="${color}" style="background:${color}"></button>`
+  ).join("");
+
   openModal(`
     <div class="modal-header">
       <h2>${isEdit ? "Edit Tag" : "Add Tag"}</h2>
@@ -1487,10 +1554,25 @@ function openTagForm(existing) {
         <label>Name</label>
         <input type="text" id="f-name" value="${existing ? escapeHtml(existing.name) : ""}" placeholder="e.g. trip-italy" required>
       </div>
+      <div class="field">
+        <label>Color</label>
+        <div class="icon-grid" id="f-color">${colorSwatches}</div>
+      </div>
       <button type="submit" class="primary-btn">${isEdit ? "Save Changes" : "Add Tag"}</button>
       ${isEdit ? `<button type="button" class="danger-btn" id="delete-tag-btn">Delete</button>` : ""}
     </form>
   `);
+
+  let selectedColor = existing ? existing.color : COLOR_PALETTE[0];
+  document.getElementById("f-color").addEventListener("click", (e) => {
+    const btn = e.target.closest(".icon-option");
+    if (!btn) return;
+    selectedColor = btn.dataset.color;
+    document.querySelectorAll("#f-color .icon-option").forEach((b) => b.classList.toggle("selected", b === btn));
+  });
+  if (!existing) {
+    document.querySelector("#f-color .icon-option")?.classList.add("selected");
+  }
 
   document.getElementById("modal-close-btn").addEventListener("click", closeModal);
 
@@ -1517,6 +1599,7 @@ function openTagForm(existing) {
     const record = {
       id: existing ? existing.id : uid(),
       name,
+      color: selectedColor,
       createdAt: existing ? existing.createdAt : Date.now(),
     };
     await DB.put("tags", record);
@@ -1551,16 +1634,30 @@ function wireReports() {
     state.reportTo = e.target.value;
     render();
   });
-  document.getElementById("report-include-chips").addEventListener("click", (e) => {
-    const btn = e.target.closest(".chip-option");
+  document.getElementById("report-filter-mode-btns").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
     if (!btn) return;
-    toggleId(state.reportIncludeIds, btn.dataset.catId);
+    state.reportFilterMode = btn.dataset.mode;
     render();
   });
-  document.getElementById("report-exclude-chips").addEventListener("click", (e) => {
+  document.getElementById("report-category-chips").addEventListener("click", (e) => {
     const btn = e.target.closest(".chip-option");
     if (!btn) return;
-    toggleId(state.reportExcludeIds, btn.dataset.catId);
+    const activeIds = state.reportFilterMode === "exclude" ? state.reportExcludeIds : state.reportIncludeIds;
+    toggleId(activeIds, btn.dataset.catId);
+    render();
+  });
+  document.getElementById("report-tag-mode-btns").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    state.reportTagFilterMode = btn.dataset.mode;
+    render();
+  });
+  document.getElementById("report-tag-chips").addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip-option");
+    if (!btn) return;
+    const activeIds = state.reportTagFilterMode === "exclude" ? state.reportTagExcludeIds : state.reportTagIncludeIds;
+    toggleId(activeIds, btn.dataset.tagId);
     render();
   });
 }
@@ -1569,6 +1666,12 @@ function renderCategoryChipGroup(containerId, selectedIds) {
   document.getElementById(containerId).innerHTML = state.categories.map((c) =>
     `<button type="button" class="chip-option ${selectedIds.includes(c.id) ? "selected" : ""}" data-cat-id="${c.id}">${c.icon} ${escapeHtml(c.name)}</button>`
   ).join("");
+}
+
+function renderTagChipGroup(containerId, selectedIds) {
+  document.getElementById(containerId).innerHTML = state.tags
+    .map((t) => tagToggleChipHtml(t, selectedIds.includes(t.id)))
+    .join("");
 }
 
 function renderCategoryChart(records) {
@@ -1627,8 +1730,17 @@ function renderReports() {
   document.getElementById("report-from").value = state.reportRange === "custom" ? state.reportFrom || start : start;
   document.getElementById("report-to").value = state.reportRange === "custom" ? state.reportTo || end : end;
 
-  renderCategoryChipGroup("report-include-chips", state.reportIncludeIds);
-  renderCategoryChipGroup("report-exclude-chips", state.reportExcludeIds);
+  document.querySelectorAll("#report-filter-mode-btns button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === state.reportFilterMode);
+  });
+  const activeIds = state.reportFilterMode === "exclude" ? state.reportExcludeIds : state.reportIncludeIds;
+  renderCategoryChipGroup("report-category-chips", activeIds);
+
+  document.querySelectorAll("#report-tag-mode-btns button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === state.reportTagFilterMode);
+  });
+  const activeTagIds = state.reportTagFilterMode === "exclude" ? state.reportTagExcludeIds : state.reportTagIncludeIds;
+  renderTagChipGroup("report-tag-chips", activeTagIds);
 
   const records = reportFilteredTransactions();
 

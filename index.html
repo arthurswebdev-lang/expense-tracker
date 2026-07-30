@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Spends">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-<link rel="stylesheet" href="styles.css?v=16">
+<link rel="stylesheet" href="styles.css?v=20">
 </head>
 <body>
 
@@ -124,6 +124,7 @@
       <button type="button" class="chip-btn" data-range="month">This Month</button>
       <button type="button" class="chip-btn" data-range="today">Today</button>
       <button type="button" class="chip-btn" data-range="week">This Week</button>
+      <button type="button" class="chip-btn" data-range="last30">Last 30 Days</button>
       <button type="button" class="chip-btn" data-range="custom">Custom Range</button>
     </div>
     <div class="report-custom-range" id="report-custom-range" hidden>
@@ -136,13 +137,22 @@
         <input type="date" id="report-to">
       </div>
     </div>
-    <div class="field">
-      <label>Include Categories</label>
-      <div class="chip-grid" id="report-include-chips"></div>
+    <div class="report-range-btns" id="report-filter-mode-btns">
+      <button type="button" class="chip-btn" data-mode="include">Include</button>
+      <button type="button" class="chip-btn" data-mode="exclude">Exclude</button>
     </div>
     <div class="field">
-      <label>Exclude Categories</label>
-      <div class="chip-grid" id="report-exclude-chips"></div>
+      <label>Categories</label>
+      <div class="chip-grid" id="report-category-chips"></div>
+    </div>
+
+    <div class="report-range-btns" id="report-tag-mode-btns">
+      <button type="button" class="chip-btn" data-mode="include">Include</button>
+      <button type="button" class="chip-btn" data-mode="exclude">Exclude</button>
+    </div>
+    <div class="field">
+      <label>Tags</label>
+      <div class="chip-grid" id="report-tag-chips"></div>
     </div>
 
     <div class="summary-card">
@@ -189,6 +199,6 @@
   <div class="modal-sheet" id="modal-sheet"></div>
 </div>
 
-<script src="app.js?v=16"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>
