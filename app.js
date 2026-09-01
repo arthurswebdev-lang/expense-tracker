@@ -1769,43 +1769,41 @@ function renderReports() {
 
 function wireExport() {
   document.getElementById("export-btn").addEventListener("click", exportCurrentMonth);
+  document.getElementById("report-export-btn").addEventListener("click", exportReportRange);
 }
 
-async function exportCurrentMonth() {
-  const records = await DB.getAllByIndex("transactions", "month", state.month);
-  const payload = {
-    month: state.month,
-    currency: "AMD",
-    exportedAt: new Date().toISOString(),
-    records: records.map((t) => {
-      const acc = accountById(t.accountId);
-      const toAcc = accountById(t.toAccountId);
-      const cat = categoryById(t.categoryId);
-      const sub = subcategoryById(cat, t.subcategoryId);
-      return {
-        id: t.id,
-        date: t.date,
-        type: t.type,
-        amount: t.amount,
-        account: acc ? acc.name : null,
-        toAccount: t.type === "transfer" ? (toAcc ? toAcc.name : null) : undefined,
-        category: cat ? cat.name : null,
-        subcategory: sub ? sub.name : null,
-        tags: (t.tagIds || []).map((tid) => tagById(tid)?.name).filter(Boolean),
-        notes: t.notes || "",
-        isAdjustment: !!t.isAdjustment,
-      };
-    }),
+// Records are flattened to names rather than ids so an export file stands on
+// its own — readable without the accounts/categories/tags it was taken from.
+function toExportRecord(t) {
+  const acc = accountById(t.accountId);
+  const toAcc = accountById(t.toAccountId);
+  const cat = categoryById(t.categoryId);
+  const sub = subcategoryById(cat, t.subcategoryId);
+  return {
+    id: t.id,
+    date: t.date,
+    type: t.type,
+    amount: t.amount,
+    account: acc ? acc.name : null,
+    toAccount: t.type === "transfer" ? (toAcc ? toAcc.name : null) : undefined,
+    category: cat ? cat.name : null,
+    subcategory: sub ? sub.name : null,
+    tags: (t.tagIds || []).map((tid) => tagById(tid)?.name).filter(Boolean),
+    notes: t.notes || "",
+    isAdjustment: !!t.isAdjustment,
   };
+}
 
+// iOS has no real file system to download into, so prefer the share sheet
+// (save to Files, send to another app) and fall back to a link download.
+async function shareOrDownloadJson(payload, filename, count) {
   const json = JSON.stringify(payload, null, 2);
-  const filename = `spends-${state.month}.json`;
   const blob = new Blob([json], { type: "application/json" });
 
   if (navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: "application/json" })] })) {
     try {
       await navigator.share({ files: [new File([blob], filename, { type: "application/json" })], title: filename });
-      toast(`Shared ${records.length} record(s)`);
+      toast(`Shared ${count} record(s)`);
       return;
     } catch (err) {
       if (err && err.name === "AbortError") return;
@@ -1821,7 +1819,48 @@ async function exportCurrentMonth() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  toast(`Downloaded ${records.length} record(s) as ${filename}`);
+  toast(`Downloaded ${count} record(s) as ${filename}`);
+}
+
+async function exportCurrentMonth() {
+  const records = await DB.getAllByIndex("transactions", "month", state.month);
+  await shareOrDownloadJson(
+    {
+      month: state.month,
+      currency: "AMD",
+      exportedAt: new Date().toISOString(),
+      records: records.map(toExportRecord),
+    },
+    `spends-${state.month}.json`,
+    records.length
+  );
+}
+
+// Exports exactly what the Reports screen is showing — same range, same
+// category/tag filters — and records those filters in the payload so the
+// file explains which subset of history it actually covers.
+async function exportReportRange() {
+  const records = reportFilteredTransactions();
+  const { start, end } = reportRangeDates();
+  const catIds = state.reportFilterMode === "exclude" ? state.reportExcludeIds : state.reportIncludeIds;
+  const tagIds = state.reportTagFilterMode === "exclude" ? state.reportTagExcludeIds : state.reportTagIncludeIds;
+
+  await shareOrDownloadJson(
+    {
+      range: { preset: state.reportRange, from: start, to: end },
+      filters: {
+        categoryMode: state.reportFilterMode,
+        categories: catIds.map((id) => categoryById(id)?.name).filter(Boolean),
+        tagMode: state.reportTagFilterMode,
+        tags: tagIds.map((id) => tagById(id)?.name).filter(Boolean),
+      },
+      currency: "AMD",
+      exportedAt: new Date().toISOString(),
+      records: records.map(toExportRecord),
+    },
+    `spends-${start}_${end}.json`,
+    records.length
+  );
 }
 
 /* ---------------------------------------------------------------------

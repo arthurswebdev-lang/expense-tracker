@@ -653,6 +653,11 @@ html, body {
 .export-hint { color: var(--text-dim); font-size: 13px; }
 .export-month { font-weight: 600; font-size: 17px; margin: 10px 0; }
 
+.report-export-btn {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
 .report-range-btns {
   display: flex;
   flex-wrap: wrap;
