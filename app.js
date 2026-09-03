@@ -296,6 +296,28 @@ const TX_TYPES = [
 
 const ACCOUNT_ICONS = ["🏦", "💳", "💵", "💰", "🐷", "📱", "🏧", "💎", "👛", "📈", "🪙", "🧾", "🌐", "🔒"];
 const CATEGORY_ICONS = ["🍔", "🛒", "🚗", "🏠", "💡", "🎬", "🩺", "✈️", "🎓", "🎁", "🐾", "☕", "👕", "📱", "⚽", "🍺", "💊", "🔧", "📚", "🎮", "🥾", "🧾", "🛍️", "🧸", "❓"];
+// The full set behind "More icons…" — a broad sweep of emoji so any category
+// or subcategory can find something close without leaving the app. Anything
+// missing can still be typed in directly.
+const MORE_ICONS = [
+  "\ud83c\udfe0", "\ud83c\udfe1", "\ud83c\udfd8\ufe0f", "\ud83c\udfe2", "\ud83c\udfec", "\ud83c\udfea", "\ud83c\udfe6", "\ud83c\udfeb", "\ud83c\udfe5", "\ud83c\udfed", "\ud83c\udfdb\ufe0f", "\u26ea", "\ud83c\udfe8", "\ud83c\udfd5\ufe0f",
+  "\ud83c\udf54", "\ud83c\udf55", "\ud83c\udf5f", "\ud83c\udf2d", "\ud83e\udd57", "\ud83c\udf5c", "\ud83c\udf71", "\ud83c\udf5b", "\ud83e\udd58", "\ud83e\udd6a", "\ud83c\udf5e", "\ud83e\uddc0", "\ud83e\udd5a", "\ud83e\udd53",
+  "\ud83c\udf57", "\ud83e\udd69", "\ud83d\udc1f", "\ud83e\udd90", "\ud83c\udf4e", "\ud83c\udf4c", "\ud83c\udf47", "\ud83c\udf53", "\ud83c\udf49", "\ud83c\udf4a", "\ud83e\udd51", "\ud83c\udf45", "\ud83e\udd55", "\ud83e\udd66",
+  "\u2615", "\ud83c\udf75", "\ud83e\uddc3", "\ud83e\udd5b", "\ud83c\udf7a", "\ud83c\udf77", "\ud83c\udf78", "\ud83e\udd42", "\ud83c\udf70", "\ud83c\udf82", "\ud83c\udf6b", "\ud83c\udf6c", "\ud83c\udf66", "\ud83c\udf69",
+  "\ud83d\ude97", "\ud83d\ude95", "\ud83d\ude8c", "\ud83d\ude8e", "\ud83d\ude87", "\ud83d\ude82", "\ud83d\ude86", "\u2708\ufe0f", "\ud83d\ude81", "\ud83d\udea2", "\u26f4\ufe0f", "\ud83d\udeb2", "\ud83d\udef4", "\ud83c\udfcd\ufe0f",
+  "\u26fd", "\ud83d\udd0c", "\ud83c\udd7f\ufe0f", "\ud83d\udee3\ufe0f", "\ud83e\uddf3", "\ud83c\udfab", "\ud83d\udee1\ufe0f", "\ud83d\udea6", "\ud83d\udd27", "\ud83d\udd28", "\ud83e\ude9b", "\ud83e\uddf0", "\u2699\ufe0f", "\ud83e\udea3",
+  "\ud83d\udca1", "\ud83d\udd25", "\ud83d\udca7", "\ud83d\uddd1\ufe0f", "\ud83e\uddf9", "\ud83e\uddfa", "\ud83e\uddfc", "\ud83e\uddf4", "\ud83e\uddfb", "\ud83d\udebf", "\ud83d\udec1", "\ud83e\ude91", "\ud83d\udecb\ufe0f", "\ud83d\udd10",
+  "\ud83d\udcf1", "\ud83d\udcbb", "\ud83d\udda5\ufe0f", "\u2328\ufe0f", "\ud83d\udda8\ufe0f", "\ud83c\udfa7", "\ud83d\udcf7", "\ud83d\udcfa", "\ud83d\udcbd", "\ud83d\udd0b", "\ud83d\udce1", "\ud83c\udf10", "\ud83d\udcde", "\ud83d\udce0",
+  "\ud83e\ude7a", "\ud83d\udc8a", "\ud83d\udc89", "\ud83e\uddec", "\ud83e\uddb7", "\ud83d\udc41\ufe0f", "\ud83e\uddbe", "\ud83e\ude79", "\ud83e\uddea", "\ud83e\uddd1\u200d\u2695\ufe0f", "\ud83d\udc76", "\ud83e\uddd2", "\ud83d\udc6a", "\ud83d\udc36",
+  "\ud83d\udc31", "\ud83d\udc3e", "\ud83e\udd9c", "\ud83d\udc20", "\ud83c\udf3f", "\ud83c\udf33", "\ud83c\udf38", "\ud83c\udf3b", "\ud83c\udf35", "\ud83c\udf44", "\ud83c\udf42", "\ud83c\udf0d", "\u2600\ufe0f", "\u2744\ufe0f",
+  "\ud83d\udc55", "\ud83d\udc57", "\ud83d\udc60", "\ud83d\udc5f", "\ud83d\udc54", "\ud83e\udde5", "\ud83e\udde6", "\ud83d\udc52", "\ud83d\udc5c", "\ud83c\udf92", "\ud83d\udc8d", "\u231a", "\ud83d\udd76\ufe0f", "\ud83e\uddf5",
+  "\ud83c\udfac", "\ud83c\udfae", "\ud83c\udfb2", "\ud83c\udfa8", "\ud83c\udfb8", "\ud83c\udfb9", "\ud83c\udfa4", "\ud83c\udfad", "\ud83c\udfaa", "\ud83c\udfa1", "\ud83c\udfb3", "\ud83c\udfaf", "\ud83e\udde9", "\ud83c\udccf",
+  "\u26bd", "\ud83c\udfc0", "\ud83c\udfbe", "\ud83c\udfd0", "\ud83c\udfc8", "\ud83e\udd4a", "\ud83c\udfca", "\ud83c\udfc3", "\ud83e\uddd8", "\ud83c\udfcb\ufe0f", "\u26f7\ufe0f", "\ud83e\udd7e", "\ud83e\udd4b", "\u26fa",
+  "\ud83d\udcda", "\ud83d\udcd6", "\u270f\ufe0f", "\ud83d\udcdd", "\ud83d\udcc5", "\ud83d\udcce", "\ud83d\udcc8", "\ud83d\udcc9", "\ud83d\udcca", "\ud83d\uddc2\ufe0f", "\ud83d\udcbc", "\ud83c\udf93", "\ud83d\udd8d\ufe0f", "\ud83d\udd0d",
+  "\ud83d\udcb0", "\ud83d\udcb5", "\ud83d\udcb3", "\ud83e\ude99", "\ud83c\udfe7", "\ud83e\uddfe", "\ud83d\udcb8", "\ud83d\udcb2", "\ud83c\udfb0", "\ud83d\udd16", "\ud83c\udff7\ufe0f", "\ud83d\udce6", "\ud83d\udecd\ufe0f", "\ud83d\uded2",
+  "\ud83c\udf81", "\ud83c\udf89", "\u2764\ufe0f", "\u2b50", "\u2728", "\ud83d\udd14", "\u23f0", "\ud83d\udd11", "\ud83e\udded", "\ud83d\udccc", "\u2705", "\u2757", "\u2753", "\ud83d\udd18",
+];
+
 const COLOR_PALETTE = ["#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#00c7be", "#30b0c7", "#007aff", "#5856d6", "#af52de", "#ff2d55", "#8e8e93"];
 
 /* ---------------------------------------------------------------------
@@ -767,7 +789,7 @@ function createRecordListItem(t) {
     const acc = accountById(t.accountId);
     icon = cat ? cat.icon : "❓";
     iconBg = cat ? cat.color + "33" : "var(--border)";
-    title = cat ? cat.name + (sub_ ? " · " + sub_.name : "") : "Uncategorized";
+    title = cat ? cat.name + (sub_ ? " · " + (sub_.icon ? sub_.icon + " " : "") + sub_.name : "") : "Uncategorized";
     sub = `${t.date} · ${acc ? acc.icon + " " + escapeHtml(acc.name) : "—"}`;
   }
   if (t.notes) sub += " · " + escapeHtml(t.notes);
@@ -860,7 +882,7 @@ function renderAccountDetail(accountId) {
       const sub_ = subcategoryById(cat, t.subcategoryId);
       icon = cat ? cat.icon : "❓";
       iconBg = cat ? cat.color + "33" : "var(--border)";
-      title = cat ? cat.name + (sub_ ? " · " + sub_.name : "") : "Uncategorized";
+      title = cat ? cat.name + (sub_ ? " · " + (sub_.icon ? sub_.icon + " " : "") + sub_.name : "") : "Uncategorized";
       sub = t.date;
       amountClass = "amount-" + t.type;
       amountText = fmtSigned(t.amount, t.type);
@@ -1039,7 +1061,7 @@ function openTransactionForm(existing, defaultAccountId) {
     const preselect = existing && existing.categoryId === cat.id ? existing.subcategoryId : null;
     const sortedSubs = [...cat.subcategories].sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
     select.innerHTML = `<option value="">None</option>` + sortedSubs.map(
-      (s) => `<option value="${s.id}" ${preselect === s.id ? "selected" : ""}>${escapeHtml(s.name)}</option>`
+      (s) => `<option value="${s.id}" ${preselect === s.id ? "selected" : ""}>${s.icon ? s.icon + " " : ""}${escapeHtml(s.name)}</option>`
     ).join("");
   }
 
@@ -1151,6 +1173,111 @@ function suggestedDateForMonth(monthStr) {
 }
 
 /* ---------------------------------------------------------------------
+ * Icon picker (shared by accounts, categories and subcategories)
+ * ------------------------------------------------------------------- */
+
+// Emoji are frequently several code points (variation selectors, skin tones,
+// ZWJ sequences), so slicing by character would tear one apart. Intl.Segmenter
+// gives the first whole grapheme; without it, a short input is trusted as
+// typed rather than mangled.
+function firstGrapheme(str) {
+  const s = (str || "").trim();
+  if (!s) return "";
+  if (typeof Intl !== "undefined" && Intl.Segmenter) {
+    for (const { segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(s)) return segment;
+  }
+  const chars = Array.from(s);
+  return chars.length <= 4 ? s : chars[0];
+}
+
+// The common icons stay visible up front; the long list and the free-text
+// field sit behind "More icons…" so the form isn't a wall of emoji. A saved
+// icon that isn't in the common set is appended to the top row, so the
+// current choice is always visible without expanding anything.
+function iconPickerHtml(baseIcons, selected, opts = {}) {
+  const custom = selected && !baseIcons.includes(selected) ? selected : "";
+  const option = (icon, label, extraClass = "") =>
+    `<button type="button" class="icon-option ${extraClass} ${icon === selected ? "selected" : ""}" data-icon="${icon}">${label}</button>`;
+
+  return `
+    <div class="icon-picker">
+      <div class="icon-grid" data-role="base">
+        ${opts.allowNone ? option("", "\u2205", "icon-option-none") : ""}
+        ${baseIcons.map((i) => option(i, i)).join("")}
+        ${custom ? `<button type="button" class="icon-option selected" data-role="custom-option" data-icon="${custom}">${custom}</button>` : ""}
+      </div>
+      <button type="button" class="icon-more-btn" data-role="more">More icons\u2026</button>
+      <div class="icon-more-panel" data-role="more-panel" hidden>
+        <div class="icon-grid">${MORE_ICONS.map((i) => option(i, i)).join("")}</div>
+        <div class="icon-custom-row">
+          <input type="text" class="icon-custom-input" data-role="custom" placeholder="Or type an emoji" value="${custom}">
+          <button type="button" class="secondary-btn icon-custom-btn" data-role="custom-set">Set</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Subcategory icons are optional — existing ones have none until they're
+// given one, so the button falls back to a "+" affordance.
+function subcatIconLabel(icon) {
+  return icon ? icon : `<span class="subcat-icon-empty">+</span>`;
+}
+
+// onPick is called with the chosen icon ("" when the None option is used).
+function wireIconPicker(root, onPick) {
+  const panel = root.querySelector('[data-role="more-panel"]');
+  const moreBtn = root.querySelector('[data-role="more"]');
+  const input = root.querySelector('[data-role="custom"]');
+
+  function select(icon) {
+    root.querySelectorAll(".icon-option").forEach((b) => b.classList.toggle("selected", b.dataset.icon === icon));
+    onPick(icon);
+  }
+
+  function applyTyped() {
+    const icon = firstGrapheme(input.value);
+    if (!icon) {
+      toast("Type an emoji first");
+      return;
+    }
+    // Mirror the typed emoji into the top row so it reads as the live choice.
+    let slot = root.querySelector('[data-role="custom-option"]');
+    if (!slot) {
+      slot = document.createElement("button");
+      slot.type = "button";
+      slot.className = "icon-option";
+      slot.dataset.role = "custom-option";
+      root.querySelector('[data-role="base"]').appendChild(slot);
+    }
+    slot.dataset.icon = icon;
+    slot.textContent = icon;
+    input.value = icon;
+    select(icon);
+  }
+
+  root.addEventListener("click", (e) => {
+    if (e.target.closest('[data-role="more"]')) {
+      panel.hidden = !panel.hidden;
+      moreBtn.textContent = panel.hidden ? "More icons\u2026" : "Fewer icons";
+      return;
+    }
+    if (e.target.closest('[data-role="custom-set"]')) {
+      applyTyped();
+      return;
+    }
+    const opt = e.target.closest(".icon-option");
+    if (opt) select(opt.dataset.icon);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault(); // the picker can sit inside a form; Enter must not submit it
+    applyTyped();
+  });
+}
+
+/* ---------------------------------------------------------------------
  * ACCOUNTS
  * ------------------------------------------------------------------- */
 
@@ -1233,9 +1360,7 @@ function openAccountForm(existing) {
   const typeOptions = ACCOUNT_TYPES.map(
     (t) => `<option value="${t.value}" ${existing && existing.type === t.value ? "selected" : ""}>${t.label}</option>`
   ).join("");
-  const iconGrid = ACCOUNT_ICONS.map(
-    (icon) => `<button type="button" class="icon-option ${existing && existing.icon === icon ? "selected" : ""}" data-icon="${icon}">${icon}</button>`
-  ).join("");
+  const initialIcon = existing ? existing.icon : ACCOUNT_ICONS[0];
   const colorSwatches = COLOR_PALETTE.map(
     (color) => `<button type="button" class="icon-option ${existing && existing.color === color ? "selected" : ""}" data-color="${color}" style="background:${color}"></button>`
   ).join("");
@@ -1260,7 +1385,7 @@ function openAccountForm(existing) {
       </div>
       <div class="field">
         <label>Icon</label>
-        <div class="icon-grid" id="f-icon">${iconGrid}</div>
+        <div id="f-icon">${iconPickerHtml(ACCOUNT_ICONS, initialIcon)}</div>
       </div>
       <div class="field">
         <label>Initial Balance (֏)</label>
@@ -1272,14 +1397,9 @@ function openAccountForm(existing) {
     </form>
   `);
 
-  let selectedIcon = existing ? existing.icon : ACCOUNT_ICONS[0];
+  let selectedIcon = initialIcon;
   let selectedColor = existing ? existing.color : COLOR_PALETTE[0];
-  document.getElementById("f-icon").addEventListener("click", (e) => {
-    const btn = e.target.closest(".icon-option");
-    if (!btn) return;
-    selectedIcon = btn.dataset.icon;
-    document.querySelectorAll("#f-icon .icon-option").forEach((b) => b.classList.toggle("selected", b === btn));
-  });
+  wireIconPicker(document.querySelector("#f-icon .icon-picker"), (icon) => { selectedIcon = icon; });
   document.getElementById("f-color").addEventListener("click", (e) => {
     const btn = e.target.closest(".icon-option");
     if (!btn) return;
@@ -1287,7 +1407,6 @@ function openAccountForm(existing) {
     document.querySelectorAll("#f-color .icon-option").forEach((b) => b.classList.toggle("selected", b === btn));
   });
   if (!existing) {
-    document.querySelector("#f-icon .icon-option")?.classList.add("selected");
     document.querySelector("#f-color .icon-option")?.classList.add("selected");
   }
 
@@ -1351,7 +1470,7 @@ function renderCategories() {
     li.className = "list-item";
     const subs = cat.subcategories || [];
     const subsHtml = subs.length
-      ? `<div style="margin-top:4px">${subs.map((s) => `<span class="tag-chip">${escapeHtml(s.name)}</span>`).join("")}</div>`
+      ? `<div style="margin-top:4px">${subs.map((s) => `<span class="tag-chip">${s.icon ? s.icon + " " : ""}${escapeHtml(s.name)}</span>`).join("")}</div>`
       : "";
     li.innerHTML = `
       <div class="item-icon" style="background:${cat.color}33">${cat.icon}</div>
@@ -1368,9 +1487,7 @@ function renderCategories() {
 
 function openCategoryForm(existing) {
   const isEdit = !!existing;
-  const iconGrid = CATEGORY_ICONS.map(
-    (icon) => `<button type="button" class="icon-option ${existing && existing.icon === icon ? "selected" : ""}" data-icon="${icon}">${icon}</button>`
-  ).join("");
+  const initialIcon = existing ? existing.icon : CATEGORY_ICONS[0];
   const colorSwatches = COLOR_PALETTE.map(
     (color) => `<button type="button" class="icon-option ${existing && existing.color === color ? "selected" : ""}" data-color="${color}" style="background:${color}"></button>`
   ).join("");
@@ -1391,7 +1508,7 @@ function openCategoryForm(existing) {
       </div>
       <div class="field">
         <label>Icon</label>
-        <div class="icon-grid" id="f-icon">${iconGrid}</div>
+        <div id="f-icon">${iconPickerHtml(CATEGORY_ICONS, initialIcon)}</div>
       </div>
       <div class="field">
         <label>Subcategories</label>
@@ -1406,18 +1523,33 @@ function openCategoryForm(existing) {
     </form>
   `);
 
-  let selectedIcon = existing ? existing.icon : CATEGORY_ICONS[0];
+  let selectedIcon = initialIcon;
   let selectedColor = existing ? existing.color : COLOR_PALETTE[0];
   let localSubcats = existing ? (existing.subcategories || []).map((s) => ({ ...s })) : [];
 
   function renderSubcatRows() {
     const container = document.getElementById("subcat-list");
     container.innerHTML = localSubcats.map((s) => `
-      <div class="subcat-row" data-id="${s.id}">
-        <input type="text" class="subcat-name-input" value="${escapeHtml(s.name)}">
-        <button type="button" class="subcat-delete-btn" title="Delete">✕</button>
+      <div class="subcat-block">
+        <div class="subcat-row" data-id="${s.id}">
+          <button type="button" class="subcat-icon-btn" data-id="${s.id}" title="Choose icon">${subcatIconLabel(s.icon)}</button>
+          <input type="text" class="subcat-name-input" value="${escapeHtml(s.name)}">
+          <button type="button" class="subcat-delete-btn" title="Delete">✕</button>
+        </div>
+        <div class="subcat-icon-picker" data-id="${s.id}" hidden>${iconPickerHtml(CATEGORY_ICONS, s.icon || "", { allowNone: true })}</div>
       </div>
     `).join("");
+
+    // Rows are re-rendered whole on add/delete, so each picker is wired fresh.
+    container.querySelectorAll(".subcat-icon-picker").forEach((wrap) => {
+      const sub = localSubcats.find((s) => s.id === wrap.dataset.id);
+      if (!sub) return;
+      wireIconPicker(wrap.querySelector(".icon-picker"), (icon) => {
+        sub.icon = icon;
+        container.querySelector(`.subcat-icon-btn[data-id="${sub.id}"]`).innerHTML = subcatIconLabel(icon);
+        wrap.hidden = true;
+      });
+    });
   }
   renderSubcatRows();
 
@@ -1425,6 +1557,12 @@ function openCategoryForm(existing) {
     const row = e.target.closest(".subcat-row");
     if (!row) return;
     const id = row.dataset.id;
+
+    if (e.target.closest(".subcat-icon-btn")) {
+      const picker = row.parentElement.querySelector(".subcat-icon-picker");
+      picker.hidden = !picker.hidden;
+      return;
+    }
 
     if (e.target.classList.contains("subcat-delete-btn")) {
       const usage = await DB.getAllByIndex("transactions", "subcategoryId", id);
@@ -1447,17 +1585,12 @@ function openCategoryForm(existing) {
     const input = document.getElementById("subcat-new-name");
     const name = input.value.trim();
     if (!name) return;
-    localSubcats.push({ id: uid(), name, usageCount: 0, createdAt: Date.now() });
+    localSubcats.push({ id: uid(), name, icon: "", usageCount: 0, createdAt: Date.now() });
     input.value = "";
     renderSubcatRows();
   });
 
-  document.getElementById("f-icon").addEventListener("click", (e) => {
-    const btn = e.target.closest(".icon-option");
-    if (!btn) return;
-    selectedIcon = btn.dataset.icon;
-    document.querySelectorAll("#f-icon .icon-option").forEach((b) => b.classList.toggle("selected", b === btn));
-  });
+  wireIconPicker(document.querySelector("#f-icon .icon-picker"), (icon) => { selectedIcon = icon; });
   document.getElementById("f-color").addEventListener("click", (e) => {
     const btn = e.target.closest(".icon-option");
     if (!btn) return;
@@ -1465,7 +1598,6 @@ function openCategoryForm(existing) {
     document.querySelectorAll("#f-color .icon-option").forEach((b) => b.classList.toggle("selected", b === btn));
   });
   if (!existing) {
-    document.querySelector("#f-icon .icon-option")?.classList.add("selected");
     document.querySelector("#f-color .icon-option")?.classList.add("selected");
   }
 
