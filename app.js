@@ -458,8 +458,10 @@ async function createBalanceAdjustment(accountId, delta) {
   // delta comes from subtracting two floats, so it arrives with noise like
   // 65.44000000000005. Rounding before it is stored keeps that noise out of
   // the database, where it would otherwise compound across adjustments.
+  // Only a delta that rounds away to nothing is skipped — any real
+  // correction is recorded, however small.
   const amount = round2(Math.abs(delta));
-  if (amount < 1) return;
+  if (amount === 0) return;
   const adjustment = {
     id: uid(),
     month: currentMonthStr(),
@@ -951,11 +953,18 @@ function openAdjustBalanceModal(accountId) {
   document.getElementById("adjust-balance-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const newBalance = round2(parseAmountInput(document.getElementById("f-new-balance").value));
-    await createBalanceAdjustment(accountId, newBalance - currentBalance);
+    const delta = round2(newBalance - currentBalance);
+    // Saying nothing happened beats closing on a success toast that lied.
+    if (delta === 0) {
+      toast("Balance unchanged");
+      closeModal();
+      return;
+    }
+    await createBalanceAdjustment(accountId, delta);
     closeModal();
     await reloadTransactions();
     render();
-    toast("Balance adjusted");
+    toast(`Balance adjusted by ${fmtSigned(delta, delta > 0 ? "income" : "expense")}`);
   });
 }
 
