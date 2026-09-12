@@ -398,6 +398,19 @@ function realAccounts() {
   return state.accounts.filter((a) => !a.isSystem);
 }
 
+// The single-account field means "my account that this money touches". A
+// transfer keeps the user's account on whichever side isn't Out of Wallet, so
+// converting one to an income or expense has to read the real side — a
+// balance adjustment for cashback stores it in toAccountId, one for a
+// forgotten charge in accountId.
+function ownAccountId(t) {
+  if (!t) return null;
+  const isReal = (id) => id && realAccounts().some((a) => a.id === id);
+  if (isReal(t.accountId)) return t.accountId;
+  if (isReal(t.toAccountId)) return t.toAccountId;
+  return null;
+}
+
 function computeBalances() {
   const map = {};
   for (const a of state.accounts) map[a.id] = a.isSystem ? null : a.initialBalance || 0;
@@ -409,6 +422,10 @@ function computeBalances() {
       if (map[t.toAccountId] != null) map[t.toAccountId] += t.amount;
     }
   }
+  // Accumulating floats drifts (0.1 + 0.2 === 0.30000000000000004). Settle each
+  // balance at 2dp so what's displayed and what an adjustment subtracts from
+  // are the same clean number.
+  for (const id in map) if (map[id] != null) map[id] = round2(map[id]);
   return map;
 }
 
@@ -434,17 +451,21 @@ function computeInOut(transactions, accountIds) {
       if (idSet.has(t.accountId) && !idSet.has(t.toAccountId)) moneyOut += t.amount;
     }
   }
-  return { moneyIn, moneyOut };
+  return { moneyIn: round2(moneyIn), moneyOut: round2(moneyOut) };
 }
 
 async function createBalanceAdjustment(accountId, delta) {
-  if (Math.abs(delta) < 1) return;
+  // delta comes from subtracting two floats, so it arrives with noise like
+  // 65.44000000000005. Rounding before it is stored keeps that noise out of
+  // the database, where it would otherwise compound across adjustments.
+  const amount = round2(Math.abs(delta));
+  if (amount < 1) return;
   const adjustment = {
     id: uid(),
     month: currentMonthStr(),
     date: new Date().toISOString().slice(0, 10),
     type: "transfer",
-    amount: Math.abs(delta),
+    amount,
     accountId: delta > 0 ? OUT_OF_WALLET_ID : accountId,
     toAccountId: delta > 0 ? accountId : OUT_OF_WALLET_ID,
     categoryId: null,
@@ -948,15 +969,23 @@ function openTransactionForm(existing, defaultAccountId) {
   const type = existing ? existing.type : "expense";
   const defaultDate = existing ? existing.date : suggestedDateForMonth(state.month);
 
-  const realAccountOptions = (selectedId) =>
-    `<option value="" disabled ${selectedId ? "" : "selected"}>Select account</option>` +
-    realAccounts().map((a) => `<option value="${a.id}" ${selectedId === a.id ? "selected" : ""}>${a.icon} ${escapeHtml(a.name)}</option>`).join("");
+  // A selectedId matching none of the rendered options must leave the
+  // placeholder selected: a <select> with nothing selected auto-selects its
+  // first enabled option, which would silently swap in an unrelated account.
+  const accountOptionsHtml = (accounts, selectedId) =>
+    `<option value="" disabled ${accounts.some((a) => a.id === selectedId) ? "" : "selected"}>Select account</option>` +
+    accounts.map((a) => `<option value="${a.id}" ${selectedId === a.id ? "selected" : ""}>${a.icon} ${escapeHtml(a.name)}</option>`).join("");
+
+  const realAccountOptions = (selectedId) => accountOptionsHtml(realAccounts(), selectedId);
   const transferAccountOptions = (selectedId, excludeId) =>
-    `<option value="" disabled ${selectedId ? "" : "selected"}>Select account</option>` +
-    state.accounts
-      .filter((a) => a.id !== excludeId)
-      .map((a) => `<option value="${a.id}" ${selectedId === a.id ? "selected" : ""}>${a.icon} ${escapeHtml(a.name)}</option>`)
-      .join("");
+    accountOptionsHtml(state.accounts.filter((a) => a.id !== excludeId), selectedId);
+  // Seeds for the account selects. For a transfer both sides are stored
+  // directly; for an income the money LANDED in accountId, so that account is
+  // the destination, not the source.
+  const seedAccountId = existing ? ownAccountId(existing) : defaultAccountId;
+  const seedFromId = existing ? (existing.type === "income" ? null : existing.accountId) : defaultAccountId;
+  const seedToId = existing ? (existing.type === "income" ? existing.accountId : existing.toAccountId) : null;
+
   const sortedCategories = [...state.categories].sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
   const categoryOptions = sortedCategories.length
     ? `<option value="" disabled ${existing ? "" : "selected"}>Select category</option>` +
@@ -980,21 +1009,21 @@ function openTransactionForm(existing, defaultAccountId) {
       </div>
       <div class="field">
         <label>Amount (֏)</label>
-        <input type="text" id="f-amount" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="0" value="${existing ? existing.amount : ""}" required>
+        <input type="text" id="f-amount" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="0" value="${existing ? round2(existing.amount) : ""}" required>
       </div>
 
       <div class="field" data-role="single-account">
         <label id="f-account-label">Account</label>
-        <select id="f-account" required>${realAccountOptions(existing ? existing.accountId : defaultAccountId)}</select>
+        <select id="f-account" required>${realAccountOptions(seedAccountId)}</select>
       </div>
 
       <div class="field" data-role="transfer-accounts" hidden>
         <label>From Account</label>
-        <select id="f-from-account">${transferAccountOptions(existing ? existing.accountId : defaultAccountId, existing ? existing.toAccountId : null)}</select>
+        <select id="f-from-account">${transferAccountOptions(seedFromId, seedToId)}</select>
       </div>
       <div class="field" data-role="transfer-accounts" hidden>
         <label>To Account</label>
-        <select id="f-to-account">${transferAccountOptions(existing ? existing.toAccountId : null, existing ? existing.accountId : defaultAccountId)}</select>
+        <select id="f-to-account">${transferAccountOptions(seedToId, seedFromId)}</select>
       </div>
 
       <div class="field" data-role="category">
@@ -1153,6 +1182,13 @@ function openTransactionForm(existing, defaultAccountId) {
       notes,
       createdAt: existing ? existing.createdAt : Date.now(),
     };
+
+    // DB.put replaces the whole record, so the adjustment flag has to be
+    // carried over by hand. It only means anything on a transfer: relabelling
+    // an adjustment as real income or expense (cashback, a found charge) makes
+    // it real cash flow, and it should start counting in Money In/Out.
+    if (currentType === "transfer" && existing && existing.isAdjustment) record.isAdjustment = true;
+
     await DB.put("transactions", record);
     if (!isEdit && categoryId) await incrementCategoryUsage(categoryId, subcategoryId);
     closeModal();
@@ -1814,9 +1850,9 @@ function renderCategoryChart(records) {
   const totals = new Map(); // categoryId -> amount
   for (const t of records) {
     if (t.type !== "expense") continue;
-    totals.set(t.categoryId, (totals.get(t.categoryId) || 0) + t.amount);
+    totals.set(t.categoryId, round2((totals.get(t.categoryId) || 0) + t.amount));
   }
-  const total = [...totals.values()].reduce((a, b) => a + b, 0);
+  const total = round2([...totals.values()].reduce((a, b) => a + b, 0));
 
   if (total <= 0) {
     donut.hidden = true;
@@ -1915,7 +1951,7 @@ function toExportRecord(t) {
     id: t.id,
     date: t.date,
     type: t.type,
-    amount: t.amount,
+    amount: round2(t.amount),
     account: acc ? acc.name : null,
     toAccount: t.type === "transfer" ? (toAcc ? toAcc.name : null) : undefined,
     category: cat ? cat.name : null,
