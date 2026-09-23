@@ -144,6 +144,7 @@ const state = {
   reportIncludeSubOff: [],
   reportExcludeSubOff: [],
   reportExpandedCats: [], // category rows opened in the filter panel
+  reportChartOpenCats: [], // category rows opened in the "Spending by Category" list
   reportTagFilterMode: "include", // "include" | "exclude" — independent of the category filter above
   reportTagIncludeIds: [], // tag ids; a record matches if it has ANY of these
   reportTagExcludeIds: [], // tag ids; a record is dropped if it has ANY of these
@@ -1911,6 +1912,12 @@ function wireReports() {
     pickCategory(catBtn.dataset.catId);
     render();
   });
+  document.getElementById("category-legend").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-chart-cat]");
+    if (!row) return;
+    toggleId(state.reportChartOpenCats, row.dataset.chartCat);
+    render();
+  });
   document.getElementById("report-category-clear").addEventListener("click", () => {
     const { ids, subOff } = reportCatSelection();
     ids.length = 0;
@@ -2020,9 +2027,14 @@ function renderCategoryChart(records) {
   const empty = document.getElementById("category-chart-empty");
 
   const totals = new Map(); // categoryId -> amount
+  const subTotals = new Map(); // categoryId -> Map(subcategoryId or "" -> amount)
   for (const t of records) {
     if (t.type !== "expense") continue;
     totals.set(t.categoryId, round2((totals.get(t.categoryId) || 0) + t.amount));
+    if (!subTotals.has(t.categoryId)) subTotals.set(t.categoryId, new Map());
+    const inner = subTotals.get(t.categoryId);
+    const key = t.subcategoryId || ""; // "" collects the ones with no subcategory
+    inner.set(key, round2((inner.get(key) || 0) + t.amount));
   }
   const total = round2([...totals.values()].reduce((a, b) => a + b, 0));
 
@@ -2036,7 +2048,7 @@ function renderCategoryChart(records) {
   donut.hidden = false;
 
   const entries = [...totals.entries()]
-    .map(([catId, amount]) => ({ cat: categoryById(catId), amount }))
+    .map(([catId, amount]) => ({ catId, cat: categoryById(catId), amount }))
     .sort((a, b) => b.amount - a.amount);
 
   let cursor = 0;
@@ -2050,14 +2062,45 @@ function renderCategoryChart(records) {
   donut.style.background = `conic-gradient(${stops.join(", ")})`;
   document.getElementById("category-donut-total").textContent = fmtAmount(total);
 
-  legend.innerHTML = entries.map(({ cat, amount }) => `
-    <div class="category-legend-row">
-      <span class="category-legend-dot" style="background:${cat ? cat.color : "var(--text-dim)"}"></span>
-      <span class="category-legend-name">${cat ? cat.icon + " " + escapeHtml(cat.name) : "❓ Uncategorized"}</span>
-      <span class="category-legend-pct">${Math.round((amount / total) * 100)}%</span>
-      <span class="category-legend-amount">${fmtAmount(amount)}</span>
-    </div>
-  `).join("");
+  // Each category row opens to show how its total splits across its
+  // subcategories, biggest first. Percentages inside a row are shares of
+  // that category, not of the whole range, so they add up to 100%.
+  legend.innerHTML = entries.map(({ catId, cat, amount }) => {
+    const subs = [...(subTotals.get(catId) || new Map()).entries()]
+      .map(([key, subAmount]) => {
+        const sub = key ? subcategoryById(cat, key) : null;
+        const name = !key
+          ? "No subcategory"
+          : sub
+            ? (sub.icon ? sub.icon + " " : "") + sub.name
+            : "Removed subcategory";
+        return { key, name, subAmount };
+      })
+      .sort((a, b) => b.subAmount - a.subAmount);
+
+    // Nothing worth opening when every record here has no subcategory.
+    const canOpen = subs.some((s) => s.key);
+    const open = canOpen && state.reportChartOpenCats.includes(catId);
+
+    const subRows = open
+      ? `<div class="legend-subs">${subs.map((s) => `
+          <div class="legend-sub-row">
+            <span class="legend-sub-name ${s.key ? "" : "legend-sub-none"}">${escapeHtml(s.name)}</span>
+            <span class="category-legend-pct">${Math.round((s.subAmount / amount) * 100)}%</span>
+            <span class="category-legend-amount">${fmtAmount(s.subAmount)}</span>
+          </div>`).join("")}</div>`
+      : "";
+
+    return `
+      <button type="button" class="category-legend-row" ${canOpen ? `data-chart-cat="${catId}"` : "disabled"}>
+        <span class="category-legend-dot" style="background:${cat ? cat.color : "var(--text-dim)"}"></span>
+        <span class="category-legend-name">${cat ? cat.icon + " " + escapeHtml(cat.name) : "❓ Uncategorized"}</span>
+        <span class="category-legend-pct">${Math.round((amount / total) * 100)}%</span>
+        <span class="category-legend-amount">${fmtAmount(amount)}</span>
+        <span class="legend-caret ${open ? "open" : ""}">${canOpen ? "\u25be" : ""}</span>
+      </button>
+      ${subRows}`;
+  }).join("");
 }
 
 function renderReports() {
