@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Spends">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-<link rel="stylesheet" href="styles.css?v=26">
+<link rel="stylesheet" href="styles.css?v=27">
 </head>
 <body>
 
@@ -120,42 +120,56 @@
 
   <!-- REPORTS VIEW -->
   <section id="view-reports" class="view" hidden>
-    <div class="report-range-btns" id="report-range-btns">
-      <button type="button" class="chip-btn" data-range="month">This Month</button>
-      <button type="button" class="chip-btn" data-range="today">Today</button>
-      <button type="button" class="chip-btn" data-range="week">This Week</button>
-      <button type="button" class="chip-btn" data-range="last30">Last 30 Days</button>
-      <button type="button" class="chip-btn" data-range="custom">Custom Range</button>
-    </div>
-    <div class="report-custom-range" id="report-custom-range" hidden>
-      <div class="field">
-        <label>From</label>
-        <input type="date" id="report-from">
+    <button type="button" class="filter-bar" id="report-filter-toggle" aria-expanded="false" aria-controls="report-filter-panel">
+      <span class="filter-bar-title">Filters</span>
+      <span class="filter-bar-summary" id="report-filter-summary">This Month</span>
+      <span class="filter-bar-caret">▾</span>
+    </button>
+
+    <div class="filter-panel" id="report-filter-panel" hidden>
+      <div class="filter-row" id="report-range-btns">
+        <button type="button" class="chip-btn" data-range="month">This Month</button>
+        <button type="button" class="chip-btn" data-range="today">Today</button>
+        <button type="button" class="chip-btn" data-range="week">This Week</button>
+        <button type="button" class="chip-btn" data-range="last30">Last 30 Days</button>
+        <button type="button" class="chip-btn" data-range="custom">Custom</button>
       </div>
-      <div class="field">
-        <label>To</label>
-        <input type="date" id="report-to">
+
+      <div class="report-custom-range" id="report-custom-range" hidden>
+        <div class="field">
+          <label>From</label>
+          <input type="date" id="report-from">
+        </div>
+        <div class="field">
+          <label>To</label>
+          <input type="date" id="report-to">
+        </div>
       </div>
-    </div>
-    <div class="report-range-btns" id="report-filter-mode-btns">
-      <button type="button" class="chip-btn" data-mode="include">Include</button>
-      <button type="button" class="chip-btn" data-mode="exclude">Exclude</button>
-    </div>
-    <div class="field">
-      <label>Categories</label>
-      <div class="chip-grid" id="report-category-chips"></div>
+
+      <div class="filter-group">
+        <div class="filter-group-head">
+          <span class="filter-group-label">Categories</span>
+          <div class="mode-switch" id="report-filter-mode-btns">
+            <button type="button" data-mode="include">Include</button>
+            <button type="button" data-mode="exclude">Exclude</button>
+          </div>
+        </div>
+        <div class="chip-grid" id="report-category-chips"></div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-group-head">
+          <span class="filter-group-label">Tags</span>
+          <div class="mode-switch" id="report-tag-mode-btns">
+            <button type="button" data-mode="include">Include</button>
+            <button type="button" data-mode="exclude">Exclude</button>
+          </div>
+        </div>
+        <div class="chip-grid" id="report-tag-chips"></div>
+      </div>
     </div>
 
-    <div class="report-range-btns" id="report-tag-mode-btns">
-      <button type="button" class="chip-btn" data-mode="include">Include</button>
-      <button type="button" class="chip-btn" data-mode="exclude">Exclude</button>
-    </div>
-    <div class="field">
-      <label>Tags</label>
-      <div class="chip-grid" id="report-tag-chips"></div>
-    </div>
-
-    <div class="summary-card">
+    <div class="summary-card summary-card-compact">
       <div class="summary-row">
         <div class="summary-stat">
           <div class="summary-stat-label">In</div>
@@ -170,10 +184,11 @@
           <div class="summary-stat-value" id="report-stat-net">0 ֏</div>
         </div>
       </div>
-      <div class="summary-sub" id="report-record-count">0 records</div>
+      <div class="summary-foot">
+        <span class="summary-sub" id="report-record-count">0 records</span>
+        <button type="button" class="mini-btn" id="report-export-btn">⬇️ Export</button>
+      </div>
     </div>
-
-    <button type="button" id="report-export-btn" class="secondary-btn report-export-btn">⬇️ Export These Records</button>
 
     <div class="category-chart-card" id="category-chart-card">
       <h3 class="category-chart-title">Spending by Category</h3>
@@ -201,6 +216,6 @@
   <div class="modal-sheet" id="modal-sheet"></div>
 </div>
 
-<script src="app.js?v=26"></script>
+<script src="app.js?v=27"></script>
 </body>
 </html>

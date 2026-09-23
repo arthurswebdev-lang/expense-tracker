@@ -714,43 +714,136 @@ html, body {
 .export-hint { color: var(--text-dim); font-size: 13px; }
 .export-month { font-weight: 600; font-size: 17px; margin: 10px 0; }
 
-.report-export-btn {
-  margin-top: 0;
-  margin-bottom: 16px;
+/* Reports filters live in one collapsible panel. The bar above it always
+   shows which range and filters are applied, so the panel only needs to be
+   open while they are being changed — that keeps the screen short. */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.filter-bar-title { font-weight: 600; flex-shrink: 0; }
+.filter-bar-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+.filter-bar-caret {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  transition: transform 0.15s ease;
+}
+.filter-bar.open .filter-bar-caret { transform: rotate(180deg); }
+
+.filter-panel {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.filter-panel[hidden] { display: none; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-panel .chip-grid { gap: 6px; }
+.filter-panel .chip-option { padding: 6px 10px; font-size: 13px; border-radius: 16px; }
+
+.filter-group { margin-top: 14px; }
+.filter-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.filter-group-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
 }
 
-.report-range-btns {
+.mode-switch {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.mode-switch button {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mode-switch button.active {
+  background: var(--card-bg);
+  color: var(--text);
+  font-weight: 600;
 }
 
 .report-custom-range {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-top: 12px;
 }
+.report-custom-range[hidden] { display: none; }
 .report-custom-range .field { flex: 1; margin-bottom: 0; }
+
+.summary-card-compact { padding: 14px 12px; margin-bottom: 12px; }
+.summary-card-compact .summary-stat-value { font-size: 17px; }
+.summary-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+.summary-foot .summary-sub { margin-top: 0; }
+.mini-btn {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
 
 .category-chart-card {
   background: var(--card-bg);
   border-radius: 16px;
-  padding: 18px;
-  margin-bottom: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
 }
 .category-chart-title {
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   font-size: 14px;
   font-weight: 600;
   text-align: center;
 }
 .category-donut {
   position: relative;
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  margin: 0 auto 20px;
+  margin: 0 auto 14px;
 }
 .category-donut[hidden] { display: none; }
 .category-donut-hole {
@@ -773,7 +866,7 @@ html, body {
   margin-top: 2px;
 }
 
-.category-legend { display: flex; flex-direction: column; gap: 10px; }
+.category-legend { display: flex; flex-direction: column; gap: 8px; }
 .category-legend-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .category-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .category-legend-name {

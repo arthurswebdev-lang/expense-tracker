@@ -132,6 +132,7 @@ const state = {
   tags: [],
   transactions: [], // current month only
   allTransactions: [], // every month, used for account balances
+  reportFiltersOpen: false, // the Reports filter panel starts collapsed
   reportRange: "month", // "month" | "today" | "week" | "custom"
   reportFrom: "",
   reportTo: "",
@@ -222,6 +223,37 @@ function reportRangeDates() {
   const [y, m] = monthStr.split("-").map(Number);
   const lastDay = String(new Date(y, m, 0).getDate()).padStart(2, "0");
   return { start: `${monthStr}-01`, end: `${monthStr}-${lastDay}` };
+}
+
+// Shown on the closed filter bar. It has to say enough that the panel does
+// not need to be opened just to check what is applied.
+function reportRangeLabel() {
+  if (state.reportRange === "today") return todayLabel();
+  if (state.reportRange === "week") {
+    const { start, end } = currentWeekRange();
+    return weekRangeLabel(start, end);
+  }
+  if (state.reportRange === "last30") return "Last 30 days";
+  if (state.reportRange === "custom") {
+    const { start, end } = reportRangeDates();
+    return `${start} \u2192 ${end}`;
+  }
+  return monthLabel(currentMonthStr());
+}
+
+function reportFilterSummary() {
+  const parts = [reportRangeLabel()];
+  const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+  const catIds = state.reportFilterMode === "exclude" ? state.reportExcludeIds : state.reportIncludeIds;
+  if (catIds.length) {
+    parts.push((state.reportFilterMode === "exclude" ? "without " : "") + count(catIds.length, "category", "categories"));
+  }
+  const tagIds = state.reportTagFilterMode === "exclude" ? state.reportTagExcludeIds : state.reportTagIncludeIds;
+  if (tagIds.length) {
+    parts.push((state.reportTagFilterMode === "exclude" ? "without " : "") + count(tagIds.length, "tag", "tags"));
+  }
+  return parts.join(" \u00b7 ");
 }
 
 function reportRangeTransactions() {
@@ -1792,6 +1824,10 @@ function openTagForm(existing) {
  * ------------------------------------------------------------------- */
 
 function wireReports() {
+  document.getElementById("report-filter-toggle").addEventListener("click", () => {
+    state.reportFiltersOpen = !state.reportFiltersOpen;
+    render();
+  });
   document.getElementById("report-range-btns").addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
@@ -1898,6 +1934,13 @@ function renderCategoryChart(records) {
 }
 
 function renderReports() {
+  const panel = document.getElementById("report-filter-panel");
+  const toggle = document.getElementById("report-filter-toggle");
+  panel.hidden = !state.reportFiltersOpen;
+  toggle.classList.toggle("open", state.reportFiltersOpen);
+  toggle.setAttribute("aria-expanded", String(state.reportFiltersOpen));
+  document.getElementById("report-filter-summary").textContent = reportFilterSummary();
+
   document.querySelectorAll("#report-range-btns button").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.range === state.reportRange);
   });
