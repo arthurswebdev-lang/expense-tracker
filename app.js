@@ -139,6 +139,11 @@ const state = {
   reportFilterMode: "include", // "include" | "exclude" — only one is active/applied at a time
   reportIncludeIds: [], // category ids to include; remembered even while exclude mode is active
   reportExcludeIds: [], // category ids to exclude; remembered even while include mode is active
+  // Subcategories follow their category by default. These hold the ones
+  // switched off, so picking a category still covers subcategories added later.
+  reportIncludeSubOff: [],
+  reportExcludeSubOff: [],
+  reportExpandedCats: [], // category rows opened in the filter panel
   reportTagFilterMode: "include", // "include" | "exclude" — independent of the category filter above
   reportTagIncludeIds: [], // tag ids; a record matches if it has ANY of these
   reportTagExcludeIds: [], // tag ids; a record is dropped if it has ANY of these
@@ -245,9 +250,13 @@ function reportFilterSummary() {
   const parts = [reportRangeLabel()];
   const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-  const catIds = state.reportFilterMode === "exclude" ? state.reportExcludeIds : state.reportIncludeIds;
+  const { ids: catIds, subOff } = reportCatSelection();
   if (catIds.length) {
     parts.push((state.reportFilterMode === "exclude" ? "without " : "") + count(catIds.length, "category", "categories"));
+    const off = subOff.filter((id) =>
+      id.endsWith(NO_SUB_SUFFIX) ? categoryById(id.slice(0, -NO_SUB_SUFFIX.length)) : findSubcategory(id)
+    ).length;
+    if (off) parts.push(count(off, "subcategory off", "subcategories off"));
   }
   const tagIds = state.reportTagFilterMode === "exclude" ? state.reportTagExcludeIds : state.reportTagIncludeIds;
   if (tagIds.length) {
@@ -263,6 +272,31 @@ function reportRangeTransactions() {
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
 }
 
+// Records can sit in a category with no subcategory chosen. They get their own
+// row in the filter, keyed like this, so they can be switched off like any
+// other subcategory instead of silently following the category.
+const NO_SUB_SUFFIX = ":none";
+function noSubKey(catId) {
+  return catId + NO_SUB_SUFFIX;
+}
+// Every switchable key under a category: its subcategories plus the "no
+// subcategory" row. Categories without subcategories have nothing to switch.
+function subKeysFor(cat) {
+  const subs = (cat && cat.subcategories) || [];
+  return subs.length ? subs.map((s) => s.id).concat(noSubKey(cat.id)) : [];
+}
+
+// The category picks for whichever mode is active. Both modes keep their own
+// lists, so switching mode does not throw the other one away.
+function reportCatSelection() {
+  const exclude = state.reportFilterMode === "exclude";
+  return {
+    ids: exclude ? state.reportExcludeIds : state.reportIncludeIds,
+    subOff: exclude ? state.reportExcludeSubOff : state.reportIncludeSubOff,
+    exclude,
+  };
+}
+
 // Only the active mode's list is applied — switching modes doesn't discard
 // the other list, it just stops using it, so flipping back keeps your picks.
 // Transfers have no category, so in include mode they only pass through
@@ -270,11 +304,16 @@ function reportRangeTransactions() {
 function reportFilteredTransactions() {
   let records = reportRangeTransactions();
 
-  const catIds = state.reportFilterMode === "exclude" ? state.reportExcludeIds : state.reportIncludeIds;
+  const { ids: catIds, subOff, exclude } = reportCatSelection();
   if (catIds.length) {
-    records = records.filter((t) =>
-      state.reportFilterMode === "exclude" ? !catIds.includes(t.categoryId) : catIds.includes(t.categoryId)
-    );
+    records = records.filter((t) => {
+      const catPicked = catIds.includes(t.categoryId);
+      // A subcategory switched off stops following its category: in include
+      // mode it drops out, in exclude mode it is spared.
+      const key = t.subcategoryId || noSubKey(t.categoryId);
+      const picked = catPicked && !subOff.includes(key);
+      return exclude ? !picked : picked;
+    });
   }
 
   // Tag filter matches if the record has ANY of the selected tags (OR, not
@@ -1854,10 +1893,33 @@ function wireReports() {
     render();
   });
   document.getElementById("report-category-chips").addEventListener("click", (e) => {
-    const btn = e.target.closest(".chip-option");
-    if (!btn) return;
-    const activeIds = state.reportFilterMode === "exclude" ? state.reportExcludeIds : state.reportIncludeIds;
-    toggleId(activeIds, btn.dataset.catId);
+    const expandBtn = e.target.closest("[data-expand-id]");
+    if (expandBtn) {
+      toggleId(state.reportExpandedCats, expandBtn.dataset.expandId);
+      render();
+      return;
+    }
+    // Checked before the category button: a subcategory row carries both ids.
+    const subBtn = e.target.closest("[data-sub-id]");
+    if (subBtn) {
+      pickSubcategory(subBtn.dataset.catId, subBtn.dataset.subId);
+      render();
+      return;
+    }
+    const catBtn = e.target.closest("[data-cat-id]");
+    if (!catBtn) return;
+    pickCategory(catBtn.dataset.catId);
+    render();
+  });
+  document.getElementById("report-category-clear").addEventListener("click", () => {
+    const { ids, subOff } = reportCatSelection();
+    ids.length = 0;
+    subOff.length = 0;
+    render();
+  });
+  document.getElementById("report-tag-clear").addEventListener("click", () => {
+    const list = state.reportTagFilterMode === "exclude" ? state.reportTagExcludeIds : state.reportTagIncludeIds;
+    list.length = 0;
     render();
   });
   document.getElementById("report-tag-mode-btns").addEventListener("click", (e) => {
@@ -1875,10 +1937,75 @@ function wireReports() {
   });
 }
 
-function renderCategoryChipGroup(containerId, selectedIds) {
-  document.getElementById(containerId).innerHTML = state.categories.map((c) =>
-    `<button type="button" class="chip-option ${selectedIds.includes(c.id) ? "selected" : ""}" data-cat-id="${c.id}">${c.icon} ${escapeHtml(c.name)}</button>`
-  ).join("");
+// Categories as a column of rows. Picking a category covers all of its
+// subcategories; the arrow opens the row so single subcategories can be
+// switched off for a narrower filter. Works the same in include and
+// exclude mode — "picked" just means include or exclude.
+function renderCategoryTree(containerId) {
+  const { ids, subOff } = reportCatSelection();
+
+  document.getElementById(containerId).innerHTML = state.categories.map((c) => {
+    const subs = c.subcategories || [];
+    const keys = subKeysFor(c);
+    const on = ids.includes(c.id);
+    const offCount = keys.filter((k) => subOff.includes(k)).length;
+    const partial = on && offCount > 0;
+    const expanded = state.reportExpandedCats.includes(c.id);
+
+    const subRow = (key, label, extraClass = "") => {
+      const subOn = on && !subOff.includes(key);
+      return `
+        <button type="button" class="sub-pick ${extraClass} ${on ? "" : "dim"}" data-sub-id="${key}" data-cat-id="${c.id}">
+          <span class="pick-box ${subOn ? "on" : ""}">${subOn ? "\u2713" : ""}</span>
+          <span class="pick-name">${label}</span>
+        </button>`;
+    };
+    const subRows = subs
+      .map((s) => subRow(s.id, `${s.icon ? s.icon + " " : ""}${escapeHtml(s.name)}`))
+      .join("") + subRow(noSubKey(c.id), "No subcategory", "sub-pick-none");
+
+    return `
+      <div class="cat-row">
+        <button type="button" class="cat-pick" data-cat-id="${c.id}">
+          <span class="pick-box ${partial ? "partial" : on ? "on" : ""}">${partial ? "\u2013" : on ? "\u2713" : ""}</span>
+          <span class="pick-name">${c.icon} ${escapeHtml(c.name)}</span>
+          ${partial ? `<span class="pick-count">${keys.length - offCount}/${keys.length}</span>` : ""}
+        </button>
+        ${subs.length
+          ? `<button type="button" class="cat-expand ${expanded ? "open" : ""}" data-expand-id="${c.id}" aria-expanded="${expanded}" aria-label="Show subcategories">\u25be</button>`
+          : `<span class="cat-expand-gap"></span>`}
+      </div>
+      ${subs.length && expanded ? `<div class="cat-subs">${subRows}</div>` : ""}`;
+  }).join("");
+}
+
+// Switching a category on or off resets its subcategories, so a category
+// always starts out covering everything under it.
+function pickCategory(catId) {
+  const { ids, subOff } = reportCatSelection();
+  toggleId(ids, catId);
+  for (const key of subKeysFor(categoryById(catId))) {
+    const i = subOff.indexOf(key);
+    if (i !== -1) subOff.splice(i, 1);
+  }
+}
+
+// Tapping a subcategory under a category that is off means "only this one":
+// the category turns on and every other subcategory is switched off. That
+// saves unticking a long list by hand.
+function pickSubcategory(catId, subKey) {
+  const { ids, subOff } = reportCatSelection();
+
+  if (!ids.includes(catId)) {
+    ids.push(catId);
+    for (const key of subKeysFor(categoryById(catId))) {
+      if (key !== subKey && !subOff.includes(key)) subOff.push(key);
+    }
+    const i = subOff.indexOf(subKey);
+    if (i !== -1) subOff.splice(i, 1);
+    return;
+  }
+  toggleId(subOff, subKey);
 }
 
 function renderTagChipGroup(containerId, selectedIds) {
@@ -1953,14 +2080,16 @@ function renderReports() {
   document.querySelectorAll("#report-filter-mode-btns button").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.mode === state.reportFilterMode);
   });
-  const activeIds = state.reportFilterMode === "exclude" ? state.reportExcludeIds : state.reportIncludeIds;
-  renderCategoryChipGroup("report-category-chips", activeIds);
+  const { ids: activeIds } = reportCatSelection();
+  renderCategoryTree("report-category-chips");
+  document.getElementById("report-category-clear").hidden = activeIds.length === 0;
 
   document.querySelectorAll("#report-tag-mode-btns button").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.mode === state.reportTagFilterMode);
   });
   const activeTagIds = state.reportTagFilterMode === "exclude" ? state.reportTagExcludeIds : state.reportTagIncludeIds;
   renderTagChipGroup("report-tag-chips", activeTagIds);
+  document.getElementById("report-tag-clear").hidden = activeTagIds.length === 0;
 
   const records = reportFilteredTransactions();
 

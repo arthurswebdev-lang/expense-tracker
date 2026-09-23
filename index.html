@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Spends">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-<link rel="stylesheet" href="styles.css?v=27">
+<link rel="stylesheet" href="styles.css?v=28">
 </head>
 <body>
 
@@ -149,20 +149,26 @@
       <div class="filter-group">
         <div class="filter-group-head">
           <span class="filter-group-label">Categories</span>
-          <div class="mode-switch" id="report-filter-mode-btns">
-            <button type="button" data-mode="include">Include</button>
-            <button type="button" data-mode="exclude">Exclude</button>
+          <div class="filter-group-actions">
+            <button type="button" class="link-btn" id="report-category-clear" hidden>Clear</button>
+            <div class="mode-switch" id="report-filter-mode-btns">
+              <button type="button" data-mode="include">Include</button>
+              <button type="button" data-mode="exclude">Exclude</button>
+            </div>
           </div>
         </div>
-        <div class="chip-grid" id="report-category-chips"></div>
+        <div class="cat-tree" id="report-category-chips"></div>
       </div>
 
       <div class="filter-group">
         <div class="filter-group-head">
           <span class="filter-group-label">Tags</span>
-          <div class="mode-switch" id="report-tag-mode-btns">
-            <button type="button" data-mode="include">Include</button>
-            <button type="button" data-mode="exclude">Exclude</button>
+          <div class="filter-group-actions">
+            <button type="button" class="link-btn" id="report-tag-clear" hidden>Clear</button>
+            <div class="mode-switch" id="report-tag-mode-btns">
+              <button type="button" data-mode="include">Include</button>
+              <button type="button" data-mode="exclude">Exclude</button>
+            </div>
           </div>
         </div>
         <div class="chip-grid" id="report-tag-chips"></div>
@@ -216,6 +222,6 @@
   <div class="modal-sheet" id="modal-sheet"></div>
 </div>
 
-<script src="app.js?v=27"></script>
+<script src="app.js?v=28"></script>
 </body>
 </html>
