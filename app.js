@@ -2157,6 +2157,14 @@ function wireExport() {
 
 // Records are flattened to names rather than ids so an export file stands on
 // its own — readable without the accounts/categories/tags it was taken from.
+// Category and subcategory names carry their emoji in the export, so a
+// category reads as "Food \ud83c\udf54". Subcategory icons are optional, and a
+// name with none is written on its own.
+function nameWithIcon(item) {
+  if (!item) return null;
+  return item.icon ? `${item.name} ${item.icon}` : item.name;
+}
+
 function toExportRecord(t) {
   const acc = accountById(t.accountId);
   const toAcc = accountById(t.toAccountId);
@@ -2169,8 +2177,8 @@ function toExportRecord(t) {
     amount: round2(t.amount),
     account: acc ? acc.name : null,
     toAccount: t.type === "transfer" ? (toAcc ? toAcc.name : null) : undefined,
-    category: cat ? cat.name : null,
-    subcategory: sub ? sub.name : null,
+    category: nameWithIcon(cat),
+    subcategory: nameWithIcon(sub),
     tags: (t.tagIds || []).map((tid) => tagById(tid)?.name).filter(Boolean),
     notes: t.notes || "",
     isAdjustment: !!t.isAdjustment,
