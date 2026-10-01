@@ -713,6 +713,7 @@ html, body {
 .export-card h2 { margin-top: 0; font-size: 18px; }
 .export-hint { color: var(--text-dim); font-size: 13px; }
 .export-month { font-weight: 600; font-size: 17px; margin: 10px 0; }
+.export-card-second { margin-top: 12px; }
 
 /* Reports filters live in one collapsible panel. The bar above it always
    shows which range and filters are applied, so the panel only needs to be

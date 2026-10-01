@@ -2154,7 +2154,60 @@ function renderReports() {
 
 function wireExport() {
   document.getElementById("export-btn").addEventListener("click", exportCurrentMonth);
+  document.getElementById("export-setup-btn").addEventListener("click", exportSetup);
   document.getElementById("report-export-btn").addEventListener("click", exportReportRange);
+}
+
+function recordLabel(n) {
+  return `${n} record${n === 1 ? "" : "s"}`;
+}
+
+// The reference data as stored, read from the database rather than rebuilt
+// from records: that way categories carry their real ids and colours, and
+// ones with no records yet are included too. Keys match the stored shape so
+// the file can be compared with SEED_CATEGORIES field by field.
+async function exportSetup() {
+  const [accounts, categories, tags] = await Promise.all([
+    DB.getAll("accounts"),
+    DB.getAll("categories"),
+    DB.getAll("tags"),
+  ]);
+
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    currency: "AMD",
+    accounts: [...accounts].sort(byName).map((a) => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      icon: a.icon,
+      color: a.color,
+      initialBalance: round2(a.initialBalance || 0),
+      isSystem: !!a.isSystem,
+    })),
+    categories: [...categories].sort(byName).map((c) => ({
+      id: c.id,
+      name: c.name,
+      icon: c.icon,
+      color: c.color,
+      usageCount: c.usageCount || 0,
+      subcategories: [...(c.subcategories || [])].sort(byName).map((s) => ({
+        id: s.id,
+        name: s.name,
+        icon: s.icon || null,
+        usageCount: s.usageCount || 0,
+      })),
+    })),
+    tags: [...tags].sort(byName).map((t) => ({ id: t.id, name: t.name, color: t.color })),
+  };
+
+  const subCount = payload.categories.reduce((n, c) => n + c.subcategories.length, 0);
+  await shareOrDownloadJson(
+    payload,
+    `spends-setup-${todayISO()}.json`,
+    `${payload.categories.length} categories + ${subCount} subcategories`
+  );
 }
 
 // Records are flattened to names rather than ids so an export file stands on
@@ -2189,14 +2242,14 @@ function toExportRecord(t) {
 
 // iOS has no real file system to download into, so prefer the share sheet
 // (save to Files, send to another app) and fall back to a link download.
-async function shareOrDownloadJson(payload, filename, count) {
+async function shareOrDownloadJson(payload, filename, label) {
   const json = JSON.stringify(payload, null, 2);
   const blob = new Blob([json], { type: "application/json" });
 
   if (navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: "application/json" })] })) {
     try {
       await navigator.share({ files: [new File([blob], filename, { type: "application/json" })], title: filename });
-      toast(`Shared ${count} record(s)`);
+      toast(`Shared ${label}`);
       return;
     } catch (err) {
       if (err && err.name === "AbortError") return;
@@ -2212,7 +2265,7 @@ async function shareOrDownloadJson(payload, filename, count) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  toast(`Downloaded ${count} record(s) as ${filename}`);
+  toast(`Downloaded ${label} \u2192 ${filename}`);
 }
 
 async function exportCurrentMonth() {
@@ -2225,7 +2278,7 @@ async function exportCurrentMonth() {
       records: records.map(toExportRecord),
     },
     `spends-${state.month}.json`,
-    records.length
+    recordLabel(records.length)
   );
 }
 
@@ -2252,7 +2305,7 @@ async function exportReportRange() {
       records: records.map(toExportRecord),
     },
     `spends-${start}_${end}.json`,
-    records.length
+    recordLabel(records.length)
   );
 }
 
