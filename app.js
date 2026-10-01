@@ -537,7 +537,7 @@ async function createBalanceAdjustment(accountId, delta) {
   const adjustment = {
     id: uid(),
     month: currentMonthStr(),
-    date: new Date().toISOString().slice(0, 10),
+    date: todayISO(),
     type: "transfer",
     amount,
     accountId: delta > 0 ? OUT_OF_WALLET_ID : accountId,
@@ -1048,7 +1048,7 @@ function openTransactionForm(existing, defaultAccountId) {
 
   const isEdit = !!existing;
   const type = existing ? existing.type : "expense";
-  const defaultDate = existing ? existing.date : suggestedDateForMonth(state.month);
+  const defaultDate = existing ? existing.date : todayISO();
 
   // A selectedId matching none of the rendered options must leave the
   // placeholder selected: a <select> with nothing selected auto-selects its
@@ -1278,15 +1278,6 @@ function openTransactionForm(existing, defaultAccountId) {
     render();
     toast(isEdit ? "Record updated" : "Record added");
   });
-}
-
-function suggestedDateForMonth(monthStr) {
-  const today = new Date();
-  const todayMonth = currentMonthStr();
-  if (monthStr === todayMonth) {
-    return today.toISOString().slice(0, 10);
-  }
-  return monthStr + "-01";
 }
 
 /* ---------------------------------------------------------------------
