@@ -83,20 +83,22 @@ function uid() {
  * ------------------------------------------------------------------- */
 
 const SEED_CATEGORIES = [
-  { name: "Տուն", icon: "🏠", color: "#007aff", subs: ["Սնունդ", "տնտեսական", "ծախսի համար", "դեղորայք", "կոմունալ"] },
-  { name: "Սնունդ", icon: "🍔", color: "#ff9500", subs: ["Չիփսեր", "ռեստորան"] },
-  { name: "Արշավներ", icon: "🥾", color: "#34c759", subs: ["սնունդ", "տրանսպորտ"] },
-  { name: "Տրանսպորտ", icon: "🚗", color: "#ff3b30", subs: ["տաքսի", "երթուղային"] },
-  { name: "Վերանորոգում", icon: "🔧", color: "#8e8e93", subs: [] },
+  { name: "Անձնական առևտուր", icon: "🛒", color: "#ffcc00", subs: [{ name: "sport", icon: "🏃" }, { name: "Տեխնիկա", icon: "📟" }, { name: "հագուստ", icon: "👕" }, { name: "հոբբի", icon: "🎒" }, { name: "ուսում", icon: "🎓" }] },
+  { name: "Առիթներ", icon: "🛍️", color: "#af52de", subs: [{ name: "Ընտանեկան", icon: "🧑‍🧑‍🧒‍🧒" }] },
+  { name: "Արշավներ", icon: "🥾", color: "#34c759", subs: [{ name: "սնունդ", icon: "🥪" }, { name: "տրանսպորտ", icon: "🚐" }] },
+  { name: "Դրսի Սնունդ", icon: "🍔", color: "#ff9500", subs: [{ name: "Հյուր", icon: "🍰" }, { name: "Չիփսեր", icon: "🍪" }, { name: "Պերերիվ", icon: "🍜" }, { name: "ռեստորան", icon: "🍱" }] },
+  { name: "Երեխաներին", icon: "🧸", color: "#ff2d55", subs: [{ name: "Ուսում", icon: "🎓" }, { name: "Սպորտ", icon: "⚽" }, { name: "խաղեր", icon: "🎮" }, { name: "հագուստ", icon: "👕" }] },
+  { name: "Զվարճանքներ", icon: "🎮", color: "#30b0c7", subs: [{ name: "cinema", icon: "🎬" }] },
+  { name: "Խնամք", icon: "💡", color: "#00c7be", subs: [{ name: "Վարսավիրանոց", icon: "💈" }] },
+  { name: "Հանգիստ", icon: "✈️", color: "#30b0c7", subs: [{ name: "հյուրանոց", icon: "🏪" }] },
+  { name: "Մուտքեր", icon: "💰", color: "#30d158", subs: [{ name: "cashback", icon: "🪙" }, { name: "խնայողական", icon: "🐷" }, { name: "պարտքի վերադարձ", icon: "💸" }] },
+  { name: "Նվեր", icon: "🎁", color: "#ff2d55", subs: [] },
+  { name: "Չնախատեսված", icon: "❓", color: "#ff9500", subs: [{ name: "պարտք", icon: "💸" }, { name: "օգնություն", icon: "🛟" }] },
   { name: "Վարկեր", icon: "🏦", color: "#5856d6", subs: [] },
-  { name: "Հարկեր", icon: "🧾", color: "#af52de", subs: ["ԱՁ"] },
-  { name: "Մուտքեր", icon: "💰", color: "#30d158", subs: ["աշխատավարձ", "խնայողական", "պարտքի վերադարձ"] },
-  { name: "Առողջություն", icon: "🩺", color: "#ff2d55", subs: [] },
-  { name: "Վճարովի ծառայություններ", icon: "📱", color: "#00c7be", subs: ["software", "phone"] },
-  { name: "Անձնական առևտուր", icon: "🛍️", color: "#ffcc00", subs: ["Տեխնիկա", "ուսում", "հոբբի", "հագուստ"] },
-  { name: "Չնախատեսված", icon: "❓", color: "#ff9500", subs: ["պարտք", "օգնություն"] },
-  { name: "Հանգիստ", icon: "🎬", color: "#30b0c7", subs: ["Կինո", "հյուրանոց"] },
-  { name: "Երեխաներին", icon: "🧸", color: "#ff2d55", subs: ["հագուստ", "սնունդ", "խաղեր"] },
+  { name: "Վերանորոգում", icon: "🔧", color: "#8e8e93", subs: [] },
+  { name: "Վճարովի ծառայություններ", icon: "📱", color: "#00c7be", subs: [{ name: "East vs West", icon: "🦾" }, { name: "phone", icon: "📞" }, { name: "software", icon: "📱" }] },
+  { name: "Տուն", icon: "🏠", color: "#007aff", subs: [{ name: "viva", icon: "📱" }, { name: "Նորոգում", icon: "🔧" }, { name: "Սնունդ", icon: "🥦" }, { name: "Տեխնիկա", icon: "📺" }, { name: "դեղորայք", icon: "💊" }, { name: "ծախսի համար", icon: "❓" }, { name: "կոմունալ", icon: "⚡️" }, { name: "տնտեսական", icon: "🪣" }] },
+  { name: "Տրանսպորտ", icon: "🚗", color: "#ff3b30", subs: [{ name: "երթուղային", icon: "🚎" }, { name: "տաքսի", icon: "🚕" }] },
 ];
 
 async function seedDefaultCategoriesIfEmpty() {
@@ -109,7 +111,7 @@ async function seedDefaultCategoriesIfEmpty() {
       icon: c.icon,
       color: c.color,
       usageCount: 0,
-      subcategories: c.subs.map((name) => ({ id: uid(), name, usageCount: 0, createdAt: Date.now() })),
+      subcategories: c.subs.map((s) => ({ id: uid(), name: s.name, icon: s.icon, usageCount: 0, createdAt: Date.now() })),
       createdAt: Date.now(),
     });
   }
