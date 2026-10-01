@@ -2233,7 +2233,12 @@ function toExportRecord(t) {
     account: acc ? acc.name : null,
     toAccount: t.type === "transfer" ? (toAcc ? toAcc.name : null) : undefined,
     category: nameWithIcon(cat),
+    // The ids sit next to the names so a record can be matched exactly,
+    // without parsing the display text. null on transfers, which have no
+    // category, and on an expense with no subcategory chosen.
+    categoryId: t.categoryId || null,
     subcategory: nameWithIcon(sub),
+    subcategoryId: t.subcategoryId || null,
     tags: (t.tagIds || []).map((tid) => tagById(tid)?.name).filter(Boolean),
     notes: t.notes || "",
     isAdjustment: !!t.isAdjustment,
