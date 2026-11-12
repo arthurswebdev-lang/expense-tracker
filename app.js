@@ -452,7 +452,7 @@ async function reloadReferenceData() {
     DB.getAll("categories"),
     DB.getAll("tags"),
   ]);
-  state.accounts.sort((a, b) => (a.isSystem ? 1 : b.isSystem ? -1 : a.name.localeCompare(b.name)));
+  state.accounts.sort(compareAccounts);
   state.categories.forEach((c) => { if (!c.subcategories) c.subcategories = []; });
   state.categories.sort((a, b) => a.name.localeCompare(b.name));
   state.tags.forEach((t) => { if (!t.color) t.color = COLOR_PALETTE[0]; });
@@ -466,6 +466,18 @@ async function reloadTransactions() {
   ]);
   state.transactions = monthTx.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
   state.allTransactions = allTx;
+}
+
+// The user's drag-and-drop order. Accounts saved before ordering existed
+// have no "order" and fall in after the ordered ones by name, which is the
+// old alphabetical order as long as nothing was ever reordered. The system
+// account always goes last.
+function compareAccounts(a, b) {
+  if (!!a.isSystem !== !!b.isSystem) return a.isSystem ? 1 : -1;
+  const ao = typeof a.order === "number" ? a.order : Infinity;
+  const bo = typeof b.order === "number" ? b.order : Infinity;
+  if (ao !== bo) return ao < bo ? -1 : 1;
+  return a.name.localeCompare(b.name);
 }
 
 function realAccounts() {
@@ -834,7 +846,8 @@ function renderAccountGrid() {
 
   if (gridAccounts.length > 0) {
     const cols = Math.max(1, Math.ceil(Math.sqrt(gridAccounts.length)));
-    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    // Column count lives in CSS (--cols) so phones can cap it at 2.
+    grid.style.setProperty("--cols", cols);
 
     const balances = computeBalances();
     for (const acc of gridAccounts) {
@@ -1398,6 +1411,8 @@ function renderAccounts() {
   empty.hidden = state.accounts.length !== 0;
 
   const balances = computeBalances();
+  // Only real accounts can be moved; there is nothing to reorder with one.
+  const canReorder = realAccounts().length > 1;
 
   for (const acc of state.accounts) {
     const li = document.createElement("li");
@@ -1406,6 +1421,9 @@ function renderAccounts() {
     const balanceHtml = acc.isSystem
       ? `<div class="item-sub">—</div>`
       : `<div class="account-balance">${fmtAmount(balance)}</div>`;
+    const handleHtml = canReorder && !acc.isSystem
+      ? `<div class="drag-handle" aria-label="Drag to reorder">≡</div>`
+      : "";
     li.innerHTML = `
       <div class="item-icon" style="background:${acc.color}33">${acc.icon}</div>
       <div class="item-body">
@@ -1413,10 +1431,138 @@ function renderAccounts() {
         <div class="item-sub">${ACCOUNT_TYPES.find((t) => t.value === acc.type)?.label || ""}</div>
       </div>
       ${balanceHtml}
+      ${handleHtml}
     `;
+    if (canReorder && !acc.isSystem) {
+      li.dataset.accountId = acc.id;
+      li.classList.add("reorderable");
+    }
     li.addEventListener("click", () => (acc.isSystem ? openSystemAccountInfo(acc) : openAccountForm(acc)));
     list.appendChild(li);
   }
+  if (canReorder) wireAccountReorder(list);
+}
+
+/* Account reordering. Mouse uses native HTML5 drag and drop on the whole
+ * row. Touch and pen use pointer events on the ≡ handle, because iOS Safari
+ * does not start HTML5 drags from a finger reliably. Both paths share the
+ * same slot logic, indicator and save. */
+
+// Which gap the pointer is over: 0 = before the first reorderable row,
+// rows.length = after the last one. Decided by each row's vertical middle.
+function accountDropSlot(rows, clientY) {
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i].getBoundingClientRect();
+    if (clientY < r.top + r.height / 2) return i;
+  }
+  return rows.length;
+}
+
+function showAccountDropSlot(rows, slot) {
+  rows.forEach((row, i) => {
+    row.classList.toggle("drop-before", i === slot);
+    row.classList.toggle("drop-after", i === rows.length - 1 && slot === rows.length);
+  });
+}
+
+function clearAccountDragState(list) {
+  list.querySelectorAll(".reorderable").forEach((row) => row.classList.remove("dragging", "drop-before", "drop-after"));
+}
+
+function wireAccountReorder(list) {
+  const rows = () => [...list.querySelectorAll(".reorderable")];
+  let dragId = null;
+  let slot = null;
+
+  const finish = async () => {
+    const id = dragId;
+    const target = slot;
+    dragId = null;
+    slot = null;
+    clearAccountDragState(list);
+    if (id != null && target != null) await moveAccount(id, target);
+  };
+
+  // Native drag and drop (mouse / trackpad).
+  for (const row of rows()) {
+    row.draggable = true;
+    row.addEventListener("dragstart", (e) => {
+      dragId = row.dataset.accountId;
+      slot = null;
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", dragId); // Firefox needs data to start a drag
+      }
+      row.classList.add("dragging");
+    });
+    row.addEventListener("dragend", () => {
+      // A drop already saved and cleared dragId; this only cleans up a cancelled drag.
+      dragId = null;
+      slot = null;
+      clearAccountDragState(list);
+    });
+  }
+  list.addEventListener("dragover", (e) => {
+    if (dragId == null) return;
+    e.preventDefault(); // allows the drop
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    slot = accountDropSlot(rows(), e.clientY);
+    showAccountDropSlot(rows(), slot);
+  });
+  list.addEventListener("drop", (e) => {
+    if (dragId == null) return;
+    e.preventDefault();
+    slot = accountDropSlot(rows(), e.clientY);
+    finish();
+  });
+
+  // Touch / pen: drag by the handle.
+  for (const handle of list.querySelectorAll(".drag-handle")) {
+    const row = handle.closest(".reorderable");
+    handle.addEventListener("click", (e) => e.stopPropagation()); // the handle never opens the edit form
+    handle.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse") return; // mouse goes through native drag and drop
+      e.preventDefault();
+      dragId = row.dataset.accountId;
+      slot = null;
+      row.classList.add("dragging");
+      handle.setPointerCapture?.(e.pointerId);
+    });
+    handle.addEventListener("pointermove", (e) => {
+      if (dragId !== row.dataset.accountId) return;
+      e.preventDefault();
+      slot = accountDropSlot(rows(), e.clientY);
+      showAccountDropSlot(rows(), slot);
+    });
+    handle.addEventListener("pointerup", () => {
+      if (dragId !== row.dataset.accountId) return;
+      finish();
+    });
+    handle.addEventListener("pointercancel", () => {
+      if (dragId !== row.dataset.accountId) return;
+      dragId = null;
+      slot = null;
+      clearAccountDragState(list);
+    });
+  }
+}
+
+// Moves an account to a gap in the real-account list and saves the whole
+// order. Every real account gets an "order" from then on, so accounts that
+// had none (saved before ordering existed) are pinned where they appear.
+async function moveAccount(id, slot) {
+  const ordered = realAccounts();
+  const from = ordered.findIndex((a) => a.id === id);
+  if (from === -1) return;
+  const next = [...ordered];
+  const [moved] = next.splice(from, 1);
+  next.splice(slot > from ? slot - 1 : slot, 0, moved);
+
+  const changed = next.filter((a, i) => a.order !== i);
+  if (changed.length === 0) return;
+  await Promise.all(next.map((a, i) => (a.order === i ? null : DB.put("accounts", { ...a, order: i }))));
+  await reloadReferenceData();
+  render();
 }
 
 function openSystemAccountInfo(acc) {
@@ -1554,6 +1700,10 @@ function openAccountForm(existing) {
         isSystem: false,
         createdAt: Date.now(),
       };
+      // Once the user has reordered, a new account goes to the end of their
+      // order. Before that, leaving it out keeps the alphabetical list.
+      const orders = realAccounts().map((a) => a.order).filter((o) => typeof o === "number");
+      if (orders.length > 0) record.order = Math.max(...orders) + 1;
       await DB.put("accounts", record);
     }
 
@@ -2177,7 +2327,8 @@ async function exportSetup() {
   const payload = {
     exportedAt: new Date().toISOString(),
     currency: "AMD",
-    accounts: [...accounts].sort(byName).map((a) => ({
+    // Accounts come out in the user's order, as the app lists them.
+    accounts: [...accounts].sort(compareAccounts).map((a) => ({
       id: a.id,
       name: a.name,
       type: a.type,
@@ -2185,6 +2336,7 @@ async function exportSetup() {
       color: a.color,
       initialBalance: round2(a.initialBalance || 0),
       isSystem: !!a.isSystem,
+      order: typeof a.order === "number" ? a.order : null,
     })),
     categories: [...categories].sort(byName).map((c) => ({
       id: c.id,

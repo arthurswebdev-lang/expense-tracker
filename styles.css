@@ -270,6 +270,9 @@ html, body {
 
 .account-grid {
   display: grid;
+  /* minmax(0, …) keeps columns equal: a long name or balance truncates
+     with an ellipsis instead of widening its column past the screen. */
+  grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 20px;
 }
@@ -338,6 +341,16 @@ html, body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Phones: 3+ columns leave no room for the balance, so never go past 2.
+   Extra accounts wrap into more rows of the same 2 equal columns. */
+@media (max-width: 600px) {
+  .account-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-grid > .account-tile:only-child { grid-column: 1 / -1; }
+  /* Half-width tiles: give the balance as much room as possible. */
+  .account-tile { gap: 8px; padding-right: 10px; }
+  .account-tile-icon { width: 32px; height: 32px; font-size: 16px; border-radius: 9px; }
+  .account-tile-balance { font-size: 15px; }
+}
 
 .account-detail-card {
   background: var(--card-bg);
@@ -390,6 +403,23 @@ html, body {
   cursor: pointer;
 }
 .list-item:last-child { border-bottom: none; }
+
+/* Account reordering: the dragged row fades, and an accent line marks
+   the gap where it will land. */
+.drag-handle {
+  flex-shrink: 0;
+  padding: 6px 2px 6px 8px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-dim);
+  cursor: grab;
+  touch-action: none; /* a finger on the handle drags instead of scrolling */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.list-item.dragging { opacity: 0.4; background: var(--border); }
+.list-item.drop-before { box-shadow: inset 0 3px 0 var(--accent); }
+.list-item.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
 
 .item-icon {
   width: 38px;
